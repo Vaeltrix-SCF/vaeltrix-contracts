@@ -1,0 +1,23 @@
+{
+  "name": "@vaeltrix/mock-anchor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SEP-31-shaped receiving anchor for demos. Test infrastructure only; refuses to start on the public network (guide \u00a714.3).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^17.2.1",
+    "@vaeltrix/sdk": "workspace:*",
+    "fastify": "^5.12.7",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  }
+}

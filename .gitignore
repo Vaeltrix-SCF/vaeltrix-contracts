@@ -1,0 +1,20 @@
+# Rust
+/target
+**/test_snapshots/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+.vitest/
+
+# Env and secrets (guide §3.5: secrets never go in the repo)
+.env
+.env.*
+!.env.example
+.stellar/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/

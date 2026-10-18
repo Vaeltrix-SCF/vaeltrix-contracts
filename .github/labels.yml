@@ -1,0 +1,20 @@
+# Guide §16.1. Apply with scripts/labels.sh (needs the GitHub CLI, authenticated).
+- { name: "epic:foundations", color: "5319e7", description: "VX-1xx shared crates, scaffold, CI" }
+- { name: "epic:registry", color: "5319e7", description: "VX-2xx vaeltrix_registry" }
+- { name: "epic:bond", color: "5319e7", description: "VX-3xx vaeltrix_bond" }
+- { name: "epic:scoreboard", color: "5319e7", description: "VX-4xx vaeltrix_scoreboard" }
+- { name: "epic:deploy", color: "5319e7", description: "VX-5xx testnet deploy and seed" }
+- { name: "epic:observer", color: "5319e7", description: "VX-6xx observer service" }
+- { name: "epic:indexer-api", color: "5319e7", description: "VX-7xx indexer and REST API" }
+- { name: "epic:sdk-mock", color: "5319e7", description: "VX-8xx SDK and mock anchor" }
+- { name: "epic:demo-docs", color: "5319e7", description: "VX-9xx demo scripts and docs" }
+- { name: "area:contracts", color: "1d76db", description: "Rust / Soroban code" }
+- { name: "area:backend", color: "1d76db", description: "TypeScript services and packages" }
+- { name: "area:tooling", color: "1d76db", description: "Scripts, CI, repo tooling" }
+- { name: "weekend", color: "d93f0b", description: "Must land for the testnet demo" }
+- { name: "stretch", color: "fbca04", description: "Weekend if time allows" }
+- { name: "post-weekend", color: "c5def5", description: "V0, after the demo" }
+- { name: "size:S", color: "ededed", description: "Under 2 h" }
+- { name: "size:M", color: "ededed", description: "2 to 5 h" }
+- { name: "size:L", color: "ededed", description: "Over 5 h" }
+- { name: "blocked", color: "b60205", description: "A dependency is not merged" }

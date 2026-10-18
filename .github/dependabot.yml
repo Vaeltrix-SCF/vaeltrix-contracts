@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Soroban SDK majors track network protocol upgrades; review those by hand
+  # against docs/toolchain.md rather than merging blindly.
+  - package-ecosystem: cargo
+    directory: /
+    schedule: { interval: weekly }
+    ignore:
+      - dependency-name: soroban-sdk
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      dev-tooling:
+        dependency-type: development
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

@@ -1,0 +1,43 @@
+{
+  "name": "vaeltrix",
+  "private": true,
+  "description": "Vaeltrix V0: SLA-backed staking for Stellar payment providers. Soroban contracts plus off-chain observer, indexer, API and SDK.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "contracts:build": "stellar contract build",
+    "contracts:test": "cargo test --workspace",
+    "contracts:lint": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings",
+    "deploy:testnet": "tsx scripts/deploy.ts --network testnet",
+    "seed:testnet": "tsx scripts/seed.ts --network testnet",
+    "smoke:testnet": "tsx scripts/smoke.ts --network testnet",
+    "bindings": "bash scripts/bindings.sh testnet",
+    "dev": "docker compose up -d postgres && pnpm --parallel --filter \"./services/*\" dev",
+    "db:migrate": "tsx scripts/db.ts migrate",
+    "db:reset": "tsx scripts/db.ts reset",
+    "indexer:reconcile": "pnpm --filter @vaeltrix/indexer reconcile",
+    "demo:breach": "tsx scripts/demo/breach.ts --network testnet",
+    "demo:challenge": "tsx scripts/demo/challenge.ts --network testnet",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:vectors": "cargo test -p vaeltrix-verdict -p vaeltrix-types --test vectors && vitest run packages/core/test/vectors.test.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.13.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
+  }
+}

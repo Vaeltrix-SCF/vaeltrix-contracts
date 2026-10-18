@@ -1,0 +1,18 @@
+{
+  "name": "@vaeltrix/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Deploy, seed, smoke, bindings, demo and repo tooling scripts, run from the root package.json (guide \u00a73.4, \u00a710, \u00a715).",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "build": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^17.2.1",
+    "@vaeltrix/core": "workspace:*",
+    "@vaeltrix/sdk": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}

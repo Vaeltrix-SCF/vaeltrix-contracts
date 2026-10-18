@@ -1,0 +1,7 @@
+# Pinned stable toolchain. soroban-sdk 29 needs Rust >= 1.91.
+# wasm32v1-none is the current Soroban contract target.
+[toolchain]
+channel = "1.97.0"
+targets = ["wasm32v1-none"]
+components = ["rustfmt", "clippy"]
+profile = "minimal"

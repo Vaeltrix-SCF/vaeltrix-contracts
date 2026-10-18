@@ -1,0 +1,29 @@
+{
+  "name": "@vaeltrix/sdk",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed wrapper over the generated contract bindings and the observer HTTP API (guide \u00a714).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^17.2.1",
+    "@vaeltrix/core": "workspace:*"
+  }
+}

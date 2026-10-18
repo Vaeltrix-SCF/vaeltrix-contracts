@@ -1,0 +1,10 @@
+packages:
+  - "packages/*"
+  - "packages/bindings/*"
+  - "services/*"
+  - "scripts"
+
+# pnpm 11+ blocks dependency build scripts unless allowlisted.
+# esbuild (via tsx and vitest) needs its postinstall to fetch the native binary.
+allowBuilds:
+  esbuild: true

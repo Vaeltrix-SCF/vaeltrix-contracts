@@ -1,0 +1,31 @@
+{
+  "name": "@vaeltrix/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared off-chain primitives: JCS hashing, ids, receipt byte layout, signed events, verdict port, Merkle, amounts, config (guide \u00a711.3).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^3.2.0",
+    "@noble/hashes": "^2.4.0",
+    "canonicalize": "^5.1.0",
+    "zod": "^4.6.7"
+  }
+}

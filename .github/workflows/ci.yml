@@ -1,0 +1,101 @@
+name: CI
+
+# Guide §3.6: three jobs, all required on main.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Reads rust-toolchain.toml (channel, wasm32v1-none, rustfmt, clippy) and
+      # configures Swatinem/rust-cache. RUSTFLAGS defaults to -D warnings.
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+
+      # Action version == CLI version. Keep in step with docs/toolchain.md.
+      - uses: stellar/stellar-cli@v28.1.0
+
+      - name: cargo fmt
+        run: cargo fmt --all --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace
+
+      - name: stellar contract build
+        run: stellar contract build
+
+      - name: Check all three contracts were built
+        run: |
+          for c in registry bond scoreboard; do
+            test -f "target/wasm32v1-none/release/vaeltrix_${c}.wasm" || { echo "missing vaeltrix_${c}.wasm"; exit 1; }
+          done
+          ls -l target/wasm32v1-none/release/*.wasm
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wasm
+          path: target/wasm32v1-none/release/vaeltrix_*.wasm
+          if-no-files-found: error
+
+  ts:
+    name: ts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Version comes from "packageManager" in package.json.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm -r typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm test
+
+  vectors:
+    name: vectors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Both suites load test-vectors/*.json; either disagreeing fails the job.
+      - name: Rust vector suites
+        run: cargo test -p vaeltrix-verdict -p vaeltrix-types --test vectors
+
+      - name: TypeScript vector suite
+        run: pnpm exec vitest run packages/core/test/vectors.test.ts

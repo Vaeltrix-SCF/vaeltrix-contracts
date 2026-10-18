@@ -1,0 +1,6 @@
+# Normalise line endings so shell scripts and lockfiles behave the same on
+# Windows and Linux CI.
+* text=auto eol=lf
+*.sh text eol=lf
+*.pdf binary
+*.wasm binary

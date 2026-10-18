@@ -1,0 +1,21 @@
+[package]
+name = "vaeltrix-types"
+description = "Shared on-chain types, errors and cross-contract client traits for Vaeltrix (guide §4.1-4.3)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,21 @@
+[package]
+name = "vaeltrix-verdict"
+description = "Pure no_std breach, penalty, bond and carve-out rules shared by contracts and observers (guide §4.5)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+doctest = false
+
+# Deliberately zero runtime dependencies: no Soroban, no std. Primitive types
+# only, so the rules can be ported line for line to @vaeltrix/core.
+[dependencies]
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
