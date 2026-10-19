@@ -402,3 +402,191 @@ fn provider_mutations_preserve_identity_and_admin_authorization() {
     );
     assert_eq!(client.get_provider(&provider).admin, owner);
 }
+
+fn template(env: &Env, registry: &Address) -> vaeltrix_types::SlaTemplate {
+    use vaeltrix_types::{
+        CarveOut, Direction, EventKind, EvidenceMode, Metric, PenaltyModel, PerBreachBps, Scope,
+        SlaTemplate, TemplateStatus,
+    };
+    SlaTemplate {
+        id: 901,
+        version: 1,
+        metric: Metric::TimeToCompletion,
+        start_event: EventKind::OnChainSettled,
+        end_event: EventKind::ReceiverCreditConfirmed,
+        target_ms: 120_000,
+        grace_ms: 10_000,
+        penalty: PenaltyModel::PerBreachBps(PerBreachBps {
+            bps: 500,
+            cap: 1_000_000_000,
+        }),
+        scope: Scope {
+            asset: RegistryClient::new(env, registry)
+                .params()
+                .allowed_stake_assets
+                .get(0)
+                .unwrap(),
+            direction: Direction::Inbound,
+            sender_country: None,
+            receiver_country: None,
+            min_amount: 1,
+            max_amount: 100_000_000_000,
+            payout_rail: None,
+        },
+        carve_outs: Vec::from_array(env, [CarveOut::ComplianceHoldDeclared]),
+        max_hold_ms: 60_000,
+        claim_window_secs: 600,
+        evidence_mode: EvidenceMode::ObserverOnly,
+        status: TemplateStatus::Active,
+        activates_at: 0,
+    }
+}
+#[test]
+fn propose_template_forces_status_and_eta() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let client = RegistryClient::new(&env, &id);
+    env.ledger().with_mut(|l| l.timestamp = 100);
+    let t = template(&env, &id);
+    assert_eq!(client.propose_template(&t), 1);
+    let stored = client.get_template_version(&901, &1);
+    assert_eq!(stored.status, vaeltrix_types::TemplateStatus::Proposed);
+    assert_eq!(stored.activates_at, 160);
+    assert_eq!(client.template_ids(), Vec::from_array(&env, [901]));
+}
+#[test]
+fn propose_template_rejects_each_invalid_field() {
+    use vaeltrix_types::{CarveOut, EventKind, PenaltyModel, PerBreachBps};
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let client = RegistryClient::new(&env, &id);
+    let valid = template(&env, &id);
+    let mut cases = std::vec::Vec::new();
+    macro_rules! bad {
+        ($field:ident,$value:expr) => {{
+            let mut t = valid.clone();
+            t.$field = $value;
+            cases.push((t, Error::InvalidParams));
+        }};
+    }
+    bad!(start_event, EventKind::SenderDebitConfirmed);
+    bad!(end_event, EventKind::ReceiverAccepted);
+    bad!(target_ms, 0);
+    bad!(grace_ms, 120_001);
+    bad!(claim_window_secs, 0);
+    bad!(max_hold_ms, 172_800_001);
+    bad!(
+        carve_outs,
+        Vec::from_array(
+            &env,
+            [
+                CarveOut::ComplianceHoldDeclared,
+                CarveOut::ComplianceHoldDeclared
+            ]
+        )
+    );
+    for (bps, cap) in [(0, 1), (10_001, 1), (1, 0), (1, -1)] {
+        bad!(
+            penalty,
+            PenaltyModel::PerBreachBps(PerBreachBps { bps, cap })
+        );
+    }
+    for (min, max) in [(0, 1), (-1, 1), (2, 1)] {
+        let mut t = valid.clone();
+        t.scope.min_amount = min;
+        t.scope.max_amount = max;
+        cases.push((t, Error::InvalidParams));
+    }
+    let mut t = valid;
+    t.scope.asset = Address::generate(&env);
+    cases.push((t, Error::AssetNotAllowed));
+    for (t, error) in cases {
+        assert_eq!(client.try_propose_template(&t), Err(Ok(error)));
+        assert!(client.template_ids().is_empty());
+    }
+}
+#[test]
+fn template_version_must_increment() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    let mut t = template(&env, &id);
+    t.version = 2;
+    assert_eq!(c.try_propose_template(&t), Err(Ok(Error::TemplateExists)));
+    t.version = 1;
+    c.propose_template(&t);
+    assert_eq!(c.try_propose_template(&t), Err(Ok(Error::TemplateExists)));
+    t.version = 3;
+    assert_eq!(c.try_propose_template(&t), Err(Ok(Error::TemplateExists)));
+    t.version = 2;
+    c.propose_template(&t);
+    assert_eq!(c.template_ids().len(), 1);
+    assert_eq!(c.get_template_version(&901, &1).version, 1);
+}
+#[test]
+fn activate_template_before_eta_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    c.propose_template(&template(&env, &id));
+    env.ledger().with_mut(|l| l.timestamp = 59);
+    assert_eq!(
+        c.try_activate_template(&901, &1),
+        Err(Ok(Error::TimelockActive))
+    );
+}
+#[test]
+fn activate_template_after_eta_succeeds() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    c.propose_template(&template(&env, &id));
+    env.ledger().with_mut(|l| l.timestamp = 60);
+    c.mock_auths(&[]).activate_template(&901, &1);
+    assert_eq!(
+        c.get_template(&901).status,
+        vaeltrix_types::TemplateStatus::Active
+    );
+    assert_eq!(
+        c.try_activate_template(&901, &1),
+        Err(Ok(Error::TemplateNotActive))
+    );
+}
+#[test]
+fn deprecated_template_not_returned_by_get_template() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    let mut t = template(&env, &id);
+    c.propose_template(&t);
+    env.ledger().with_mut(|l| l.timestamp = 60);
+    c.activate_template(&901, &1);
+    t.version = 2;
+    c.propose_template(&t);
+    assert_eq!(c.get_template(&901).version, 1);
+    env.ledger().with_mut(|l| l.timestamp = 120);
+    c.activate_template(&901, &2);
+    assert_eq!(c.get_template(&901).version, 2);
+    c.deprecate_template(&901, &2);
+    assert_eq!(c.get_template(&901).version, 1);
+    c.deprecate_template(&901, &1);
+    assert_eq!(c.try_get_template(&901), Err(Ok(Error::TemplateNotActive)));
+    assert_eq!(
+        c.get_template_version(&901, &1).status,
+        vaeltrix_types::TemplateStatus::Deprecated
+    );
+    t.version = 3;
+    c.propose_template(&t);
+    c.cancel_template(&901, &3);
+    env.ledger().with_mut(|l| l.timestamp = 180);
+    assert_eq!(
+        c.try_activate_template(&901, &3),
+        Err(Ok(Error::TemplateNotActive))
+    );
+}

@@ -3,6 +3,7 @@
 mod events;
 mod providers;
 mod storage;
+mod templates;
 use soroban_sdk::{Address, BytesN, Env, String, Symbol, Vec, contract, contractimpl};
 pub use storage::{ActionKind, DataKey, PendingAction};
 use storage::{touch, touch_key};
@@ -132,6 +133,34 @@ impl Registry {
     }
     pub fn reinstate_provider(env: Env, provider_id: BytesN<32>) -> Result<(), Error> {
         providers::reinstate(&env, provider_id)
+    }
+    pub fn propose_template(env: Env, template: vaeltrix_types::SlaTemplate) -> Result<u32, Error> {
+        templates::propose(&env, template)
+    }
+    pub fn activate_template(env: Env, id: u32, version: u32) -> Result<(), Error> {
+        templates::activate(&env, id, version)
+    }
+    pub fn cancel_template(env: Env, id: u32, version: u32) -> Result<(), Error> {
+        templates::cancel(&env, id, version)
+    }
+    pub fn deprecate_template(env: Env, id: u32, version: u32) -> Result<(), Error> {
+        templates::deprecate(&env, id, version)
+    }
+    pub fn get_template(env: Env, id: u32) -> Result<vaeltrix_types::SlaTemplate, Error> {
+        touch(&env);
+        templates::active(&env, id)
+    }
+    pub fn get_template_version(
+        env: Env,
+        id: u32,
+        version: u32,
+    ) -> Result<vaeltrix_types::SlaTemplate, Error> {
+        touch(&env);
+        templates::get(&env, id, version)
+    }
+    pub fn template_ids(env: Env) -> soroban_sdk::Vec<u32> {
+        touch(&env);
+        templates::ids(&env)
     }
     pub fn admin(env: Env) -> Result<Address, Error> {
         touch(&env);

@@ -74,3 +74,30 @@ pub struct ProviderReinstated {
     #[topic]
     pub provider_id: soroban_sdk::BytesN<32>,
 }
+
+// Template lifecycle events (guide §8.4, VX-203).
+#[contractevent(topics = ["tmpl_prop"])]
+pub struct TemplateProposed {
+    #[topic]
+    pub template_id: u32,
+    pub version: u32,
+    pub activates_at: u64,
+}
+#[contractevent(topics = ["tmpl_act"])]
+pub struct TemplateActivated {
+    #[topic]
+    pub template_id: u32,
+    pub version: u32,
+}
+#[contractevent(topics = ["tmpl_canc"])]
+pub struct TemplateCancelled {
+    #[topic]
+    pub template_id: u32,
+    pub version: u32,
+}
+#[contractevent(topics = ["tmpl_dep"])]
+pub struct TemplateDeprecated {
+    #[topic]
+    pub template_id: u32,
+    pub version: u32,
+}
