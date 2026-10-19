@@ -58,6 +58,20 @@ jobs:
   ts:
     name: ts
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vaeltrix
+          POSTGRES_PASSWORD: vaeltrix
+          POSTGRES_DB: vaeltrix_migrations_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vaeltrix -d vaeltrix_migrations_test"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_TEST_URL: postgres://vaeltrix:vaeltrix@127.0.0.1:5432/vaeltrix_migrations_test
     steps:
       - uses: actions/checkout@v7
 
