@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "minItems": 3,
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "network_passphrase": {
+            "const": "Test SDF Network ; September 2015"
+          },
+          "network_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "payment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "commitment_id": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "t0_ms": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "t1_ms": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "pause_ms": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "test_seed_hex": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "network_passphrase",
+          "network_id",
+          "payment_id",
+          "commitment_id",
+          "amount",
+          "t0_ms",
+          "t1_ms",
+          "pause_ms",
+          "test_seed_hex"
+        ],
+        "additionalProperties": false
+      },
+      "expect": {
+        "type": "object",
+        "properties": {
+          "message_hex": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{262}$"
+          },
+          "signer_hex": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "signature_hex": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{128}$"
+          }
+        },
+        "required": ["message_hex", "signer_hex", "signature_hex"],
+        "additionalProperties": false
+      }
+    },
+    "required": ["name", "input", "expect"],
+    "additionalProperties": false
+  }
+}

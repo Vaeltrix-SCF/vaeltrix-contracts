@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "minItems": 5,
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "home_domain": {
+            "type": "string"
+          },
+          "admin_scaddress_xdr": {
+            "type": "string",
+            "pattern": "^(0000000000000000[0-9a-f]{64}|00000001[0-9a-f]{64})$"
+          },
+          "sep31_tx_id": {
+            "type": "string"
+          }
+        },
+        "required": ["home_domain", "admin_scaddress_xdr", "sep31_tx_id"],
+        "additionalProperties": false
+      },
+      "expect": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "payment_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": ["provider_id", "payment_id"],
+        "additionalProperties": false
+      }
+    },
+    "required": ["name", "input", "expect"],
+    "additionalProperties": false
+  }
+}

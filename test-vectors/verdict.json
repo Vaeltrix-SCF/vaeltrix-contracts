@@ -1,1 +1,596 @@
-[]
+[
+  {
+    "name": "exactly on target",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": 2000,
+      "now_ms": 4000,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 0
+    },
+    "expect": {
+      "verdict": "OnTime",
+      "latency_ms": 1000
+    }
+  },
+  {
+    "name": "exactly on target plus grace",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": 2100,
+      "now_ms": 4000,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 0
+    },
+    "expect": {
+      "verdict": "OnTime",
+      "latency_ms": 1100
+    }
+  },
+  {
+    "name": "one ms over grace",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": 2101,
+      "now_ms": 4000,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 0
+    },
+    "expect": {
+      "verdict": "Late",
+      "latency_ms": 1101
+    }
+  },
+  {
+    "name": "no completion before deadline",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": null,
+      "now_ms": 2099,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 0
+    },
+    "expect": {
+      "verdict": "Pending"
+    }
+  },
+  {
+    "name": "no completion at deadline",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": null,
+      "now_ms": 2100,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 0
+    },
+    "expect": {
+      "verdict": "Pending"
+    }
+  },
+  {
+    "name": "no completion one ms after deadline",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": null,
+      "now_ms": 2101,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 0
+    },
+    "expect": {
+      "verdict": "NoCompletion"
+    }
+  },
+  {
+    "name": "completion before start",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": 999,
+      "now_ms": 4000,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 0
+    },
+    "expect": null
+  },
+  {
+    "name": "pause extends deadline",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": 2200,
+      "now_ms": 4000,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 100
+    },
+    "expect": {
+      "verdict": "OnTime",
+      "latency_ms": 1100
+    }
+  },
+  {
+    "name": "pause larger than elapsed",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": 2000,
+      "now_ms": 4000,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 1001
+    },
+    "expect": null
+  },
+  {
+    "name": "pause equals elapsed",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": 2000,
+      "now_ms": 4000,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 1000
+    },
+    "expect": {
+      "verdict": "OnTime",
+      "latency_ms": 0
+    }
+  },
+  {
+    "name": "no completion during extended deadline",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": null,
+      "now_ms": 2200,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 100
+    },
+    "expect": {
+      "verdict": "Pending"
+    }
+  },
+  {
+    "name": "no completion after extended deadline",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": null,
+      "now_ms": 2201,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 100
+    },
+    "expect": {
+      "verdict": "NoCompletion"
+    }
+  },
+  {
+    "name": "zero duration completion",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": 1000,
+      "now_ms": 4000,
+      "target_ms": 0,
+      "grace_ms": 0,
+      "pause_ms": 0
+    },
+    "expect": {
+      "verdict": "OnTime",
+      "latency_ms": 0
+    }
+  },
+  {
+    "name": "deadline overflow",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": "18446744073709551615",
+      "t1_ms": null,
+      "now_ms": 4000,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 0
+    },
+    "expect": null
+  },
+  {
+    "name": "target plus grace overflow",
+    "fn": "evaluate",
+    "input": {
+      "t0_ms": 1000,
+      "t1_ms": 2000,
+      "now_ms": 4000,
+      "target_ms": "18446744073709551615",
+      "grace_ms": 100,
+      "pause_ms": 0
+    },
+    "expect": null
+  },
+  {
+    "name": "penalty below cap",
+    "fn": "penalty",
+    "input": {
+      "amount": "10000",
+      "bps": 50,
+      "cap": "100"
+    },
+    "expect": "50"
+  },
+  {
+    "name": "penalty exactly at cap",
+    "fn": "penalty",
+    "input": {
+      "amount": "20000",
+      "bps": 50,
+      "cap": "100"
+    },
+    "expect": "100"
+  },
+  {
+    "name": "penalty above cap",
+    "fn": "penalty",
+    "input": {
+      "amount": "30000",
+      "bps": 50,
+      "cap": "100"
+    },
+    "expect": "100"
+  },
+  {
+    "name": "one stroop rounds down",
+    "fn": "penalty",
+    "input": {
+      "amount": "1",
+      "bps": 50,
+      "cap": "100"
+    },
+    "expect": "0"
+  },
+  {
+    "name": "fractional stroops round down",
+    "fn": "penalty",
+    "input": {
+      "amount": "19999",
+      "bps": 50,
+      "cap": "1000"
+    },
+    "expect": "99"
+  },
+  {
+    "name": "zero amount",
+    "fn": "penalty",
+    "input": {
+      "amount": "0",
+      "bps": 50,
+      "cap": "100"
+    },
+    "expect": "0"
+  },
+  {
+    "name": "i128 multiplication edge",
+    "fn": "penalty",
+    "input": {
+      "amount": "3402823669209384634633746074317682114",
+      "bps": 50,
+      "cap": "170141183460469231731687303715884105727"
+    },
+    "expect": "17014118346046923173168730371588410"
+  },
+  {
+    "name": "i128 multiplication overflow",
+    "fn": "penalty",
+    "input": {
+      "amount": "3402823669209384634633746074317682115",
+      "bps": 50,
+      "cap": "170141183460469231731687303715884105727"
+    },
+    "expect": null
+  },
+  {
+    "name": "maximum in scope penalty",
+    "fn": "max_penalty",
+    "input": {
+      "max_amount": "1000000",
+      "bps": 50,
+      "cap": "2000"
+    },
+    "expect": "2000"
+  },
+  {
+    "name": "claim bond minimum",
+    "fn": "claim_bond",
+    "input": {
+      "penalty": "50",
+      "min_bond": "10",
+      "bond_bps": 1000
+    },
+    "expect": "10"
+  },
+  {
+    "name": "claim bond above minimum",
+    "fn": "claim_bond",
+    "input": {
+      "penalty": "1000",
+      "min_bond": "10",
+      "bond_bps": 1000
+    },
+    "expect": "100"
+  },
+  {
+    "name": "claim bond at minimum",
+    "fn": "claim_bond",
+    "input": {
+      "penalty": "100",
+      "min_bond": "10",
+      "bond_bps": 1000
+    },
+    "expect": "10"
+  },
+  {
+    "name": "spec stake 1500 USDC",
+    "fn": "min_stake",
+    "input": {
+      "floor": "10000000000",
+      "k": 3,
+      "daily_cap": "1000000000000",
+      "bps": 50
+    },
+    "expect": "15000000000"
+  },
+  {
+    "name": "zero daily cap uses floor",
+    "fn": "min_stake",
+    "input": {
+      "floor": "10000000000",
+      "k": 3,
+      "daily_cap": "0",
+      "bps": 50
+    },
+    "expect": "10000000000"
+  },
+  {
+    "name": "stake floor dominates",
+    "fn": "min_stake",
+    "input": {
+      "floor": "10000000000",
+      "k": 3,
+      "daily_cap": "1000",
+      "bps": 50
+    },
+    "expect": "10000000000"
+  },
+  {
+    "name": "basic deadline",
+    "fn": "deadline_ms",
+    "input": {
+      "t0_ms": 1000,
+      "target_ms": 1000,
+      "grace_ms": 100,
+      "pause_ms": 200
+    },
+    "expect": 2300
+  },
+  {
+    "name": "deadline u64 boundary",
+    "fn": "deadline_ms",
+    "input": {
+      "t0_ms": "18446744073709551614",
+      "target_ms": 1,
+      "grace_ms": 0,
+      "pause_ms": 0
+    },
+    "expect": "18446744073709551615"
+  },
+  {
+    "name": "deadline addition overflow",
+    "fn": "deadline_ms",
+    "input": {
+      "t0_ms": "18446744073709551615",
+      "target_ms": 1,
+      "grace_ms": 0,
+      "pause_ms": 0
+    },
+    "expect": null
+  },
+  {
+    "name": "exit cooldown sum",
+    "fn": "exit_cooldown_secs",
+    "input": {
+      "claim_window": 604800,
+      "challenge": 172800,
+      "attestation": 172800,
+      "extra": 604800
+    },
+    "expect": 1555200
+  },
+  {
+    "name": "exit cooldown overflow",
+    "fn": "exit_cooldown_secs",
+    "input": {
+      "claim_window": "18446744073709551615",
+      "challenge": 1,
+      "attestation": 0,
+      "extra": 0
+    },
+    "expect": null
+  },
+  {
+    "name": "claim deadline milliseconds",
+    "fn": "claim_deadline_ms",
+    "input": {
+      "deadline_ms": 2300,
+      "claim_window_secs": 600
+    },
+    "expect": 602300
+  },
+  {
+    "name": "claim window multiply overflow",
+    "fn": "claim_deadline_ms",
+    "input": {
+      "deadline_ms": 0,
+      "claim_window_secs": "18446744073709551615"
+    },
+    "expect": null
+  },
+  {
+    "name": "claim deadline addition overflow",
+    "fn": "claim_deadline_ms",
+    "input": {
+      "deadline_ms": "18446744073709551615",
+      "claim_window_secs": 1
+    },
+    "expect": null
+  },
+  {
+    "name": "odd bond split 1 observers",
+    "fn": "split_rejected_bond",
+    "input": {
+      "bond": "101",
+      "provider_bps": 5000,
+      "observers": 1
+    },
+    "expect": {
+      "to_provider": "50",
+      "per_observer": "51",
+      "dust_to_provider": "0"
+    }
+  },
+  {
+    "name": "odd bond split 3 observers",
+    "fn": "split_rejected_bond",
+    "input": {
+      "bond": "101",
+      "provider_bps": 5000,
+      "observers": 3
+    },
+    "expect": {
+      "to_provider": "50",
+      "per_observer": "17",
+      "dust_to_provider": "0"
+    }
+  },
+  {
+    "name": "odd bond split 5 observers",
+    "fn": "split_rejected_bond",
+    "input": {
+      "bond": "101",
+      "provider_bps": 5000,
+      "observers": 5
+    },
+    "expect": {
+      "to_provider": "50",
+      "per_observer": "10",
+      "dust_to_provider": "1"
+    }
+  },
+  {
+    "name": "empty carve outs",
+    "fn": "apply_carve_outs",
+    "input": {
+      "events": [],
+      "max_hold_ms": 172800000
+    },
+    "expect": {
+      "pause_ms": 0,
+      "out_of_scope": false
+    }
+  },
+  {
+    "name": "overlapping spans merge",
+    "fn": "apply_carve_outs",
+    "input": {
+      "events": [
+        {
+          "kind": "ReceiverBankHoliday",
+          "from_ms": 1000,
+          "to_ms": 4000
+        },
+        {
+          "kind": "SenderInfoIncomplete",
+          "from_ms": 3000,
+          "to_ms": 5000
+        }
+      ],
+      "max_hold_ms": 172800000
+    },
+    "expect": {
+      "pause_ms": 4000,
+      "out_of_scope": false
+    }
+  },
+  {
+    "name": "compliance beyond 48h capped",
+    "fn": "apply_carve_outs",
+    "input": {
+      "events": [
+        {
+          "kind": "ComplianceHoldDeclared",
+          "from_ms": 1000,
+          "to_ms": 200001000
+        }
+      ],
+      "max_hold_ms": 172800000
+    },
+    "expect": {
+      "pause_ms": 172800000,
+      "out_of_scope": false
+    }
+  },
+  {
+    "name": "invalid beneficiary excludes payment",
+    "fn": "apply_carve_outs",
+    "input": {
+      "events": [
+        {
+          "kind": "InvalidBeneficiary",
+          "from_ms": 1000,
+          "to_ms": 2000
+        }
+      ],
+      "max_hold_ms": 172800000
+    },
+    "expect": {
+      "pause_ms": 0,
+      "out_of_scope": true
+    }
+  },
+  {
+    "name": "adjacent spans merge",
+    "fn": "apply_carve_outs",
+    "input": {
+      "events": [
+        {
+          "kind": "ReceiverBankHoliday",
+          "from_ms": 1000,
+          "to_ms": 2000
+        },
+        {
+          "kind": "SenderInfoIncomplete",
+          "from_ms": 2000,
+          "to_ms": 3000
+        }
+      ],
+      "max_hold_ms": 172800000
+    },
+    "expect": {
+      "pause_ms": 2000,
+      "out_of_scope": false
+    }
+  }
+]

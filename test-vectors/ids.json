@@ -1,1 +1,62 @@
-[]
+[
+  {
+    "name": "account admin with zero key",
+    "input": {
+      "home_domain": "anchor.example",
+      "admin_scaddress_xdr": "00000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "sep31_tx_id": "tx-001"
+    },
+    "expect": {
+      "provider_id": "3f72a55573688255a9357522fc78dfe59f7647d245d5c294b04a51dc5e206830",
+      "payment_id": "cfe07536c3367c227878cd89c2ea3e70c3eb1ae0d526aa553d31fb4af0973bca"
+    }
+  },
+  {
+    "name": "mixed-case domain normalization",
+    "input": {
+      "home_domain": "ANCHOR.EXAMPLE",
+      "admin_scaddress_xdr": "00000000000000000101010101010101010101010101010101010101010101010101010101010101",
+      "sep31_tx_id": "tx-001"
+    },
+    "expect": {
+      "provider_id": "681ce08a17f37f5f22ba2593dd95123a0472d9d0174b29d746794677f4030423",
+      "payment_id": "afe7755e8987b17fc996d1b9d8858299f829bbd19d31e11d62cb5a04273192f5"
+    }
+  },
+  {
+    "name": "distinct account admin and transaction",
+    "input": {
+      "home_domain": "payments.example",
+      "admin_scaddress_xdr": "00000000000000000202020202020202020202020202020202020202020202020202020202020202",
+      "sep31_tx_id": "sep31:42"
+    },
+    "expect": {
+      "provider_id": "18f530f2d6ceb0b5718c85e46352790c789cf15c87d3dc52bd3aa8ec1f93bd8c",
+      "payment_id": "39768a38877788e9aa54ff0f2cb3a447eed0a99d0e1af7a5f212b85927c2795b"
+    }
+  },
+  {
+    "name": "UTF-8 domain and transaction",
+    "input": {
+      "home_domain": "caf\u00e9.example",
+      "admin_scaddress_xdr": "00000000000000000303030303030303030303030303030303030303030303030303030303030303",
+      "sep31_tx_id": "\u8ee2\u9001-1"
+    },
+    "expect": {
+      "provider_id": "16f00c55d27df197cffeb9d3629e66e44a0bd48f4eb816e94c217c9786419a53",
+      "payment_id": "ed24200c40b120cd4463055572781a0652a73fc54d0a26f1e7e3207bdf87cfe3"
+    }
+  },
+  {
+    "name": "contract admin XDR discriminant",
+    "input": {
+      "home_domain": "anchor.example",
+      "admin_scaddress_xdr": "000000010404040404040404040404040404040404040404040404040404040404040404",
+      "sep31_tx_id": "tx-005"
+    },
+    "expect": {
+      "provider_id": "fd333c748a329cd3ad5427eff96ca7ebcf424b7b2e3ebd48ee2c762ecfc71b62",
+      "payment_id": "952607a0a67ce6daf61f6ba83401f52d0bfb6127ad101c2052c22ffab00b8112"
+    }
+  }
+]
