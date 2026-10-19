@@ -33,6 +33,7 @@ Re-check this file whenever Stellar announces a protocol upgrade.
 - **No `export = ...` or `lib = ...` arguments** on `#[contracttype]`, `#[contracterror]` or `#[contractevent]`. They are compile errors now. Shared types in `vaeltrix-types` need no special arguments to appear in each contract's spec.
 - **Events omit unset fields.** In a `#[contractevent]` with `data_format = "map"`, a field that is `None` or void is left out of the published map instead of written with a void value. The indexer's projection handlers (§13.2) must tolerate missing keys, for example `attestation_deadline` before a challenge.
 - **Migration-friendly storage.** Unpacking a `#[contracttype]` struct now uses the Protocol 28 sparse-map host functions (CAP-86), so an `Option` field can be added later without migrating stored entries. Removing or renaming fields still needs care.
+- **Upgrade API:** `update_current_contract_wasm` is deprecated in SDK 29. Use `env.deployer().update_current_contract(ContractExecutable::Wasm(hash))`; this selects the same underlying Wasm upgrade host operation while preserving the guide's public Upgrade action.
 - **Protocol 29 is a security release with no new CAPs.** SDK 29 only moves the env crates to 29, so test environments can load post-upgrade ledger snapshots. Nothing in §4 to §8 of the guide changes.
 
 ### Stellar CLI 28
