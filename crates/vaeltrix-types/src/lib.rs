@@ -11,3 +11,10 @@ pub mod enums;
 pub mod errors;
 pub mod ids;
 pub mod structs;
+
+pub use clients::{RegistryApi, RegistryClient, ScoreboardApi, ScoreboardClient};
+pub use constants::*;
+pub use enums::*;
+pub use errors::Error;
+pub use ids::{payment_id, provider_id};
+pub use structs::*;

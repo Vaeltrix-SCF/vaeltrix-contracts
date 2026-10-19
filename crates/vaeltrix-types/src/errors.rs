@@ -1,3 +1,51 @@
-//! The contract Error enum with frozen codes (guide §4.3).
-//!
-//! Implemented by VX-103.
+//! Frozen, append-only error codes (guide §4.3, VX-103).
+use soroban_sdk::contracterror;
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    NotAuthorized = 1,
+    ProviderNotActive = 2,
+    TemplateNotActive = 3,
+    InsufficientStake = 4,
+    OutOfScope = 5,
+    ClaimWindowClosed = 6,
+    DuplicateClaim = 7,
+    InvalidEvidence = 8,
+    NotInBreach = 9,
+    ChallengeWindowOpen = 10,
+    OpenClaimsExist = 11,
+    CooldownActive = 12,
+    UnknownObserver = 13,
+    AlreadyAttested = 14,
+    AlreadyInitialized = 15,
+    NotInitialized = 16,
+    InvalidParams = 17,
+    UnknownProvider = 18,
+    UnknownTemplate = 19,
+    UnknownCommitment = 20,
+    UnknownClaim = 21,
+    ProviderNotVerified = 22,
+    ProviderExists = 23,
+    TemplateExists = 24,
+    TimelockActive = 25,
+    AssetNotAllowed = 26,
+    AssetMismatch = 27,
+    AmountOutOfRange = 28,
+    NotCovered = 29,
+    CommitmentNotActive = 30,
+    ClaimNotOpen = 31,
+    AttestationWindowClosed = 32,
+    QuorumNotReached = 33,
+    BelowMinStake = 34,
+    StakeCapExceeded = 35,
+    PaymentIdMismatch = 36,
+    UnknownSigner = 37,
+    TooManySigners = 38,
+    UnsupportedPenaltyModel = 39,
+    ArithmeticOverflow = 40,
+    BondAlreadySet = 41,
+    BatchExists = 42,
+    InvalidPeriod = 43,
+    NothingPending = 44,
+}
