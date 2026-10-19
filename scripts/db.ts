@@ -18,7 +18,12 @@ export async function migrate(
   if (!["postgres:", "postgresql:"].includes(url.protocol)) {
     throw new Error("DATABASE_URL must be a PostgreSQL URL");
   }
-  if (command === "reset" && !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) {
+  // pg lets a query-string host override the authority hostname. Reject overrides
+  // for destructive resets so the checked host is also the connection target.
+  if (
+    command === "reset" &&
+    (url.searchParams.has("host") || !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))
+  ) {
     throw new Error("db:reset is restricted to a local development database");
   }
   const files = (await readdir(directory)).filter((f) => /^\d{4}_[a-z0-9_]+\.sql$/.test(f)).sort();

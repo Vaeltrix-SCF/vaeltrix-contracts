@@ -3,13 +3,29 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import pg from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { migrate, migrationsDir } from "./db.js";
 
 it("refuses to reset a remote database before connecting", async () => {
   await expect(migrate("postgres://user:pass@example.com/production", "reset")).rejects.toThrow(
     "local development database",
   );
+});
+
+it.each([
+  "postgres://user:pass@localhost/vaeltrix?host=db.remote.example",
+  "postgres://user:pass@127.0.0.1/vaeltrix?%68ost=db.remote.example",
+  "postgres://user:pass@[::1]/vaeltrix?host=localhost&host=db.remote.example",
+])("rejects reset host overrides before connecting: %s", async (connectionString) => {
+  const connect = vi.spyOn(pg.Client.prototype, "connect").mockImplementation(() => {
+    throw new Error("Unexpected database connection");
+  });
+  try {
+    await expect(migrate(connectionString, "reset")).rejects.toThrow("local development database");
+    expect(connect).not.toHaveBeenCalled();
+  } finally {
+    connect.mockRestore();
+  }
 });
 
 // Opt in with a disposable local database; never repurpose DATABASE_URL for tests.

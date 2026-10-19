@@ -12,7 +12,7 @@ and wrapped comments are normalized.
    adjust `DATABASE_URL` accordingly.
 3. Run `pnpm db:migrate`. Repeat safely: applied files are checksummed and skipped.
 4. Run `pnpm db:reset` to **delete the public schema and all its data** in the local
-   development database, then reapply migrations. Reset refuses remote hosts.
+   development database, then reapply migrations. Reset refuses remote hosts and `host` query-parameter overrides.
 
 The runner loads `.env` without overriding existing environment variables. It
 serializes runners with an advisory lock and commits each migration and its
