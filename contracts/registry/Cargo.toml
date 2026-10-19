@@ -17,6 +17,7 @@ vaeltrix-types = { workspace = true }
 vaeltrix-verdict = { workspace = true }
 
 [dev-dependencies]
+serde_json = { workspace = true }
 soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [lints]
