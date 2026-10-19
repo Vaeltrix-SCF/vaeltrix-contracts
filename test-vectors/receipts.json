@@ -1,1 +1,59 @@
-[]
+[
+  {
+    "name": "Path B receipt 1",
+    "input": {
+      "network_passphrase": "Test SDF Network ; September 2015",
+      "network_id": "cee0302d59844d32bdca915c8203dd44b33fbb7edc19051ea37abedf28ecd472",
+      "payment_id": "cfe07536c3367c227878cd89c2ea3e70c3eb1ae0d526aa553d31fb4af0973bca",
+      "commitment_id": "1",
+      "amount": "10000000",
+      "t0_ms": "1760000000000",
+      "t1_ms": "1760003720001",
+      "pause_ms": "0",
+      "test_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    "expect": {
+      "message_hex": "5641454c545249583a524543454950543a7631cee0302d59844d32bdca915c8203dd44b33fbb7edc19051ea37abedf28ecd472cfe07536c3367c227878cd89c2ea3e70c3eb1ae0d526aa553d31fb4af0973bca00000000000000010000000000000000000000000098968000000199c82cc00000000199c86583410000000000000000",
+      "signer_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "signature_hex": "9715f8b844b055766f186a3aba575e32be8a388c9b08a9f4db923137540994594a918396b06a1d026b1e9823a1bc70da7080007d8bf8e7f04d6df69d8357f90f"
+    }
+  },
+  {
+    "name": "Path B receipt 2",
+    "input": {
+      "network_passphrase": "Test SDF Network ; September 2015",
+      "network_id": "cee0302d59844d32bdca915c8203dd44b33fbb7edc19051ea37abedf28ecd472",
+      "payment_id": "afe7755e8987b17fc996d1b9d8858299f829bbd19d31e11d62cb5a04273192f5",
+      "commitment_id": "9007199254740993",
+      "amount": "1267650600228229401496703205376",
+      "t0_ms": "1000",
+      "t1_ms": "3000",
+      "pause_ms": "1000",
+      "test_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    "expect": {
+      "message_hex": "5641454c545249583a524543454950543a7631cee0302d59844d32bdca915c8203dd44b33fbb7edc19051ea37abedf28ecd472afe7755e8987b17fc996d1b9d8858299f829bbd19d31e11d62cb5a04273192f500200000000000010000001000000000000000000000000000000000000003e80000000000000bb800000000000003e8",
+      "signer_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "signature_hex": "4b372cdca80d468af5b9afaa7de60b88ba3b8ee4b4afbb0600b9877f59e5cbaa80247259a13d05d34c63701f9d9edda804ab04bc771c893807117e131a5c5d0f"
+    }
+  },
+  {
+    "name": "Path B receipt 3",
+    "input": {
+      "network_passphrase": "Test SDF Network ; September 2015",
+      "network_id": "cee0302d59844d32bdca915c8203dd44b33fbb7edc19051ea37abedf28ecd472",
+      "payment_id": "39768a38877788e9aa54ff0f2cb3a447eed0a99d0e1af7a5f212b85927c2795b",
+      "commitment_id": "18446744073709551615",
+      "amount": "170141183460469231731687303715884105727",
+      "t0_ms": "18446744073709551613",
+      "t1_ms": "18446744073709551614",
+      "pause_ms": "0",
+      "test_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    },
+    "expect": {
+      "message_hex": "5641454c545249583a524543454950543a7631cee0302d59844d32bdca915c8203dd44b33fbb7edc19051ea37abedf28ecd47239768a38877788e9aa54ff0f2cb3a447eed0a99d0e1af7a5f212b85927c2795bffffffffffffffff7ffffffffffffffffffffffffffffffffffffffffffffffdfffffffffffffffe0000000000000000",
+      "signer_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "signature_hex": "5495d395c1541baacaafaf00905f71e457b342d5cdbd6e3c2adb4b6d6be46491b9dbb82bffa9ad21f16b629ecc6ea184a901f4b56cd505dab62a21d82d423b09"
+    }
+  }
+]
