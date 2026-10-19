@@ -101,3 +101,16 @@ pub struct TemplateDeprecated {
     pub template_id: u32,
     pub version: u32,
 }
+
+// Observer membership events (guide §8.4, VX-204).
+#[contractevent(topics = ["obs_add"])]
+pub struct ObserverAdded {
+    #[topic]
+    pub observer: Address,
+    pub key: soroban_sdk::BytesN<32>,
+}
+#[contractevent(topics = ["obs_rm"])]
+pub struct ObserverRemoved {
+    #[topic]
+    pub observer: Address,
+}

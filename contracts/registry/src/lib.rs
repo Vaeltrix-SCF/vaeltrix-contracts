@@ -1,6 +1,7 @@
 //! Registry governance and identity (guide §5, VX-201).
 #![no_std]
 mod events;
+mod observers;
 mod providers;
 mod storage;
 mod templates;
@@ -162,6 +163,18 @@ impl Registry {
         touch(&env);
         templates::ids(&env)
     }
+    pub fn is_active_observer(env: Env, observer: Address) -> bool {
+        touch(&env);
+        observers::is_active(&env, &observer)
+    }
+    pub fn active_observer_count(env: Env) -> Result<u32, Error> {
+        touch(&env);
+        observers::count(&env)
+    }
+    pub fn observers(env: Env) -> Vec<vaeltrix_types::Observer> {
+        touch(&env);
+        observers::all(&env)
+    }
     pub fn admin(env: Env) -> Result<Address, Error> {
         touch(&env);
         admin(&env)
@@ -198,13 +211,6 @@ impl Registry {
         touch(&env);
         if let ActionKind::SetParams(ref p) = kind {
             validate_params(p)?;
-        }
-        // Observer action execution is completed by VX-204; keep it fail-closed here.
-        if matches!(
-            kind,
-            ActionKind::AddObserver(..) | ActionKind::RemoveObserver(..)
-        ) {
-            return Err(Error::InvalidParams);
         }
         let id: u32 = env
             .storage()
@@ -262,9 +268,8 @@ impl Registry {
             ActionKind::Upgrade(hash) => env
                 .deployer()
                 .update_current_contract(soroban_sdk::ContractExecutable::Wasm(hash.clone())),
-            ActionKind::AddObserver(..) | ActionKind::RemoveObserver(..) => {
-                return Err(Error::InvalidParams);
-            }
+            ActionKind::AddObserver(address, key) => observers::add(&env, address, key)?,
+            ActionKind::RemoveObserver(address) => observers::remove(&env, address)?,
         }
         a.executed = true;
         let key = DataKey::Action(action_id);

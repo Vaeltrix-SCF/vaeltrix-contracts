@@ -590,3 +590,127 @@ fn deprecated_template_not_returned_by_get_template() {
         Err(Ok(Error::TemplateNotActive))
     );
 }
+
+#[test]
+fn observer_add_and_remove_via_timelock() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    let observer = Address::generate(&env);
+    let key = soroban_sdk::BytesN::from_array(&env, &[9; 32]);
+    let add = c.propose(&ActionKind::AddObserver(observer.clone(), key.clone()));
+    assert!(!c.is_active_observer(&observer));
+    assert_eq!(c.active_observer_count(), 0);
+    assert_eq!(c.try_execute(&add), Err(Ok(Error::TimelockActive)));
+    env.ledger().with_mut(|l| l.timestamp = 60);
+    c.mock_auths(&[]).execute(&add);
+    assert!(c.is_active_observer(&observer));
+    assert_eq!(c.active_observer_count(), 1);
+    assert_eq!(c.observers().get(0).unwrap().key, key);
+    env.mock_all_auths();
+    let remove = c.propose(&ActionKind::RemoveObserver(observer.clone()));
+    assert_eq!(c.try_execute(&remove), Err(Ok(Error::TimelockActive)));
+    assert!(c.is_active_observer(&observer));
+    env.ledger().with_mut(|l| l.timestamp = 120);
+    c.mock_auths(&[]).execute(&remove);
+    assert!(!c.is_active_observer(&observer));
+    assert_eq!(c.active_observer_count(), 0);
+    let history = c.observers();
+    assert_eq!(history.len(), 1);
+    assert!(!history.get(0).unwrap().active);
+    assert_eq!(history.get(0).unwrap().address, observer);
+}
+#[test]
+fn provider_admin_cannot_become_observer() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    let owner = Address::generate(&env);
+    register(&env, &id, &owner);
+    let add = c.propose(&ActionKind::AddObserver(
+        owner.clone(),
+        soroban_sdk::BytesN::from_array(&env, &[1; 32]),
+    ));
+    env.ledger().with_mut(|l| l.timestamp = 60);
+    assert_eq!(c.try_execute(&add), Err(Ok(Error::InvalidParams)));
+    assert!(!c.is_active_observer(&owner));
+    assert_eq!(c.active_observer_count(), 0);
+    assert!(!c.action(&add).executed);
+}
+#[test]
+fn observer_independence_is_checked_at_execution_and_registration() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    let owner = Address::generate(&env);
+    let add = c.propose(&ActionKind::AddObserver(
+        owner.clone(),
+        soroban_sdk::BytesN::from_array(&env, &[1; 32]),
+    ));
+    register(&env, &id, &owner);
+    env.ledger().with_mut(|l| l.timestamp = 60);
+    assert_eq!(c.try_execute(&add), Err(Ok(Error::InvalidParams)));
+    let observer = Address::generate(&env);
+    let add = c.propose(&ActionKind::AddObserver(
+        observer.clone(),
+        soroban_sdk::BytesN::from_array(&env, &[2; 32]),
+    ));
+    env.ledger().with_mut(|l| l.timestamp = 120);
+    c.execute(&add);
+    assert_eq!(
+        c.try_register_provider(
+            &observer,
+            &soroban_sdk::String::from_str(&env, "anchor.example"),
+            &Vec::from_array(&env, [soroban_sdk::BytesN::from_array(&env, &[3; 32])]),
+            &soroban_sdk::String::from_str(&env, "")
+        ),
+        Err(Ok(Error::InvalidParams))
+    );
+    assert!(c.providers_by_admin(&observer).is_empty());
+    assert!(c.is_active_observer(&observer));
+}
+#[test]
+fn observers_are_bounded_deduplicated_and_reactivated_without_duplicate_list_entries() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    let mut actions = std::vec::Vec::new();
+    let mut addresses = std::vec::Vec::new();
+    for i in 0..33 {
+        let a = Address::generate(&env);
+        actions.push(c.propose(&ActionKind::AddObserver(
+            a.clone(),
+            soroban_sdk::BytesN::from_array(&env, &[i; 32]),
+        )));
+        addresses.push(a);
+    }
+    env.ledger().with_mut(|l| l.timestamp = 60);
+    for action in &actions[..32] {
+        c.execute(action);
+    }
+    assert_eq!(c.active_observer_count(), 32);
+    assert_eq!(c.try_execute(&actions[32]), Err(Ok(Error::InvalidParams)));
+    assert_eq!(c.observers().len(), 32);
+    let duplicate = c.propose(&ActionKind::AddObserver(
+        addresses[0].clone(),
+        soroban_sdk::BytesN::from_array(&env, &[4; 32]),
+    ));
+    let remove = c.propose(&ActionKind::RemoveObserver(addresses[0].clone()));
+    env.ledger().with_mut(|l| l.timestamp = 120);
+    assert_eq!(c.try_execute(&duplicate), Err(Ok(Error::InvalidParams)));
+    c.execute(&remove);
+    assert_eq!(c.active_observer_count(), 31);
+    let readd = c.propose(&ActionKind::AddObserver(
+        addresses[0].clone(),
+        soroban_sdk::BytesN::from_array(&env, &[5; 32]),
+    ));
+    env.ledger().with_mut(|l| l.timestamp = 180);
+    c.execute(&readd);
+    assert_eq!(c.active_observer_count(), 32);
+    assert_eq!(c.observers().len(), 32);
+    assert!(c.is_active_observer(&addresses[0]));
+}
