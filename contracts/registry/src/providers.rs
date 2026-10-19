@@ -72,6 +72,10 @@ pub fn register(
         return Err(Error::InvalidParams);
     }
     validate_signers(&signers)?;
+    // VX-204: role independence must also hold when an observer registers a provider.
+    if crate::observers::is_active(env, &admin) {
+        return Err(Error::InvalidParams);
+    }
     let id = provider_id(env, &home_domain, &admin);
     if env
         .storage()
