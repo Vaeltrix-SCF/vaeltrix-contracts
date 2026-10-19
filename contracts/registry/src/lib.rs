@@ -1,8 +1,9 @@
 //! Registry governance and identity (guide §5, VX-201).
 #![no_std]
 mod events;
+mod providers;
 mod storage;
-use soroban_sdk::{Address, Env, contract, contractimpl};
+use soroban_sdk::{Address, BytesN, Env, String, Symbol, Vec, contract, contractimpl};
 pub use storage::{ActionKind, DataKey, PendingAction};
 use storage::{touch, touch_key};
 use vaeltrix_types::{Error, Params};
@@ -80,6 +81,57 @@ impl Registry {
         touch(&env);
         events::init(&env, admin);
         Ok(())
+    }
+    pub fn register_provider(
+        env: Env,
+        admin: Address,
+        home_domain: String,
+        signers: Vec<BytesN<32>>,
+        metadata_uri: String,
+    ) -> Result<BytesN<32>, Error> {
+        providers::register(&env, admin, home_domain, signers, metadata_uri)
+    }
+    pub fn get_provider(env: Env, id: BytesN<32>) -> Result<vaeltrix_types::Provider, Error> {
+        touch(&env);
+        providers::get(&env, &id)
+    }
+    pub fn providers_by_admin(env: Env, admin: Address) -> Vec<BytesN<32>> {
+        touch(&env);
+        providers::by_admin(&env, &admin)
+    }
+    pub fn provider_id_for(env: Env, home_domain: String, admin: Address) -> BytesN<32> {
+        touch(&env);
+        vaeltrix_types::provider_id(&env, &home_domain, &admin)
+    }
+    pub fn update_signers(
+        env: Env,
+        provider_id: BytesN<32>,
+        signers: Vec<BytesN<32>>,
+    ) -> Result<(), Error> {
+        providers::update_signers(&env, provider_id, signers)
+    }
+    pub fn update_metadata(
+        env: Env,
+        provider_id: BytesN<32>,
+        metadata_uri: String,
+    ) -> Result<(), Error> {
+        providers::update_metadata(&env, provider_id, metadata_uri)
+    }
+    pub fn verify_domain(env: Env, provider_id: BytesN<32>) -> Result<(), Error> {
+        providers::verify(&env, provider_id, true)
+    }
+    pub fn unverify_domain(env: Env, provider_id: BytesN<32>) -> Result<(), Error> {
+        providers::verify(&env, provider_id, false)
+    }
+    pub fn suspend_provider(
+        env: Env,
+        provider_id: BytesN<32>,
+        reason: Symbol,
+    ) -> Result<(), Error> {
+        providers::suspend(&env, provider_id, reason)
+    }
+    pub fn reinstate_provider(env: Env, provider_id: BytesN<32>) -> Result<(), Error> {
+        providers::reinstate(&env, provider_id)
     }
     pub fn admin(env: Env) -> Result<Address, Error> {
         touch(&env);

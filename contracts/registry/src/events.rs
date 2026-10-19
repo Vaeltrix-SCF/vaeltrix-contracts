@@ -32,3 +32,45 @@ pub struct ActionCancelled {
 pub fn init(env: &Env, admin: Address) {
     Init { admin }.publish(env);
 }
+
+// Provider events (guide §8.4, VX-202).
+#[contractevent(topics = ["prov_reg"])]
+pub struct ProviderRegistered {
+    #[topic]
+    pub provider_id: soroban_sdk::BytesN<32>,
+    pub admin: Address,
+    pub home_domain: soroban_sdk::String,
+}
+#[contractevent(topics = ["prov_sig"])]
+pub struct ProviderSigners {
+    #[topic]
+    pub provider_id: soroban_sdk::BytesN<32>,
+    pub new_value: soroban_sdk::Vec<soroban_sdk::BytesN<32>>,
+}
+#[contractevent(topics = ["prov_meta"])]
+pub struct ProviderMetadata {
+    #[topic]
+    pub provider_id: soroban_sdk::BytesN<32>,
+    pub new_value: soroban_sdk::String,
+}
+#[contractevent(topics = ["prov_ver"])]
+pub struct ProviderVerified {
+    #[topic]
+    pub provider_id: soroban_sdk::BytesN<32>,
+}
+#[contractevent(topics = ["prov_unv"])]
+pub struct ProviderUnverified {
+    #[topic]
+    pub provider_id: soroban_sdk::BytesN<32>,
+}
+#[contractevent(topics = ["prov_sus"])]
+pub struct ProviderSuspended {
+    #[topic]
+    pub provider_id: soroban_sdk::BytesN<32>,
+    pub reason: soroban_sdk::Symbol,
+}
+#[contractevent(topics = ["prov_rein"])]
+pub struct ProviderReinstated {
+    #[topic]
+    pub provider_id: soroban_sdk::BytesN<32>,
+}
