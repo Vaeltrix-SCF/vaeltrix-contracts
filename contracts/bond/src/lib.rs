@@ -1,8 +1,10 @@
 //! Stake custody and claim settlement (guide §6). Governance foundation: VX-301.
 #![no_std]
 mod events;
+mod stake;
 mod storage;
 use soroban_sdk::{Address, BytesN, ContractExecutable, Env, contract, contractimpl};
+pub use stake::TemplateApi;
 pub use storage::DataKey;
 use storage::{address, touch};
 use vaeltrix_types::{Error, RegistryClient};
@@ -21,6 +23,55 @@ impl Bond {
             .set(&DataKey::NextCommitmentId, &1_u64);
         env.storage().instance().set(&DataKey::NextClaimId, &1_u64);
         touch(&env);
+    }
+    pub fn commit(
+        env: Env,
+        provider_id: BytesN<32>,
+        template_id: u32,
+        stake_asset: Address,
+        amount: i128,
+        max_volume_per_period: i128,
+        period_secs: u64,
+    ) -> Result<u64, Error> {
+        touch(&env);
+        stake::commit(
+            &env,
+            provider_id,
+            template_id,
+            stake_asset,
+            amount,
+            max_volume_per_period,
+            period_secs,
+        )
+    }
+    pub fn commitment(env: Env, id: u64) -> Result<vaeltrix_types::Commitment, Error> {
+        touch(&env);
+        storage::commitment(&env, id)
+    }
+    pub fn commitments_by_provider(env: Env, provider_id: BytesN<32>) -> soroban_sdk::Vec<u64> {
+        touch(&env);
+        stake::by_provider(&env, &provider_id)
+    }
+    pub fn available_stake(env: Env, id: u64) -> Result<i128, Error> {
+        touch(&env);
+        let c = storage::commitment(&env, id)?;
+        c.stake_total
+            .checked_sub(c.stake_reserved)
+            .ok_or(Error::ArithmeticOverflow)
+    }
+    pub fn max_penalty(env: Env, id: u64) -> Result<i128, Error> {
+        touch(&env);
+        let c = storage::commitment(&env, id)?;
+        let t = stake::registry(&env)?.get_template_version(&c.template_id, &c.template_version);
+        stake::template_penalty(&t)
+    }
+    pub fn add_stake(env: Env, id: u64, amount: i128) -> Result<(), Error> {
+        touch(&env);
+        stake::change(&env, id, amount, true)
+    }
+    pub fn withdraw_excess(env: Env, id: u64, amount: i128) -> Result<(), Error> {
+        touch(&env);
+        stake::change(&env, id, amount, false)
     }
     pub fn admin(env: Env) -> Result<Address, Error> {
         touch(&env);
