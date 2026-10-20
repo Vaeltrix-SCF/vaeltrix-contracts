@@ -27,3 +27,25 @@ pub fn address(env: &Env, key: &DataKey) -> Result<Address, Error> {
         .get(key)
         .ok_or(Error::NotInitialized)
 }
+pub fn touch_key(env: &Env, key: &DataKey) {
+    env.storage().persistent().extend_ttl(
+        key,
+        vaeltrix_types::PERSIST_THRESHOLD,
+        vaeltrix_types::PERSIST_BUMP,
+    );
+}
+pub fn commitment(env: &Env, id: u64) -> Result<vaeltrix_types::Commitment, Error> {
+    let key = DataKey::Commitment(id);
+    let value = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::UnknownCommitment)?;
+    touch_key(env, &key);
+    Ok(value)
+}
+pub fn put_commitment(env: &Env, value: &vaeltrix_types::Commitment) {
+    let key = DataKey::Commitment(value.id);
+    env.storage().persistent().set(&key, value);
+    touch_key(env, &key);
+}
