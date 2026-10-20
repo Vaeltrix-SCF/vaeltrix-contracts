@@ -26,3 +26,16 @@ pub struct StakeChanged {
     pub delta: i128,
     pub new_total: i128,
 }
+// Coverage transitions (VX-303).
+#[contractevent(topics=["cmt_pause"])]
+pub struct Paused {
+    #[topic]
+    pub commitment_id: u64,
+    pub at: u64,
+}
+#[contractevent(topics=["cmt_resum"])]
+pub struct Resumed {
+    #[topic]
+    pub commitment_id: u64,
+    pub at: u64,
+}

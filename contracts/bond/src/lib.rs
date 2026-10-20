@@ -1,5 +1,6 @@
 //! Stake custody and claim settlement (guide §6). Governance foundation: VX-301.
 #![no_std]
+mod coverage;
 mod events;
 mod stake;
 mod storage;
@@ -72,6 +73,21 @@ impl Bond {
     pub fn withdraw_excess(env: Env, id: u64, amount: i128) -> Result<(), Error> {
         touch(&env);
         stake::change(&env, id, amount, false)
+    }
+    pub fn is_covered(env: Env, commitment_id: u64, t0_ms: u64) -> Result<bool, Error> {
+        touch(&env);
+        Ok(coverage::is_covered(
+            &storage::commitment(&env, commitment_id)?,
+            t0_ms,
+        ))
+    }
+    pub fn pause(env: Env, id: u64) -> Result<(), Error> {
+        touch(&env);
+        coverage::change(&env, id, false)
+    }
+    pub fn resume(env: Env, id: u64) -> Result<(), Error> {
+        touch(&env);
+        coverage::change(&env, id, true)
     }
     pub fn admin(env: Env) -> Result<Address, Error> {
         touch(&env);
