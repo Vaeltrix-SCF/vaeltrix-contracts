@@ -1,0 +1,14 @@
+{
+  "timelock_secs": 60,
+  "challenge_window_secs": 180,
+  "attestation_window_secs": 300,
+  "exit_extra_secs": 120,
+  "quorum": 1,
+  "min_claim_bond": "10000000",
+  "claim_bond_bps": 1000,
+  "rejected_bond_provider_bps": 5000,
+  "stake_floor": "1000000000",
+  "stake_k": 3,
+  "max_stake_per_commitment": "100000000000",
+  "allowed_stake_assets": ["CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM"]
+}
