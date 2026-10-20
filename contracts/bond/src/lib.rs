@@ -2,6 +2,7 @@
 #![no_std]
 mod coverage;
 mod events;
+mod exit;
 mod stake;
 mod storage;
 use soroban_sdk::{Address, BytesN, ContractExecutable, Env, contract, contractimpl};
@@ -88,6 +89,14 @@ impl Bond {
     pub fn resume(env: Env, id: u64) -> Result<(), Error> {
         touch(&env);
         coverage::change(&env, id, true)
+    }
+    pub fn request_exit(env: Env, id: u64) -> Result<(), Error> {
+        touch(&env);
+        exit::request(&env, id)
+    }
+    pub fn finalize_exit(env: Env, id: u64) -> Result<(), Error> {
+        touch(&env);
+        exit::finalize(&env, id)
     }
     pub fn admin(env: Env) -> Result<Address, Error> {
         touch(&env);

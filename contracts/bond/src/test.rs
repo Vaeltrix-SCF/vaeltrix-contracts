@@ -425,3 +425,126 @@ fn coverage_mutations_require_provider_admin() {
         e.invoke_contract::<()>(&w.id, &soroban_sdk::Symbol::new(e, name), (id,).into_val(e));
     }
 }
+
+fn exiting() -> (crate::testutils::StakeWorld, u64, u64) {
+    let w = crate::testutils::StakeWorld::new();
+    let c = BondClient::new(&w.env, &w.id);
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    w.env.ledger().with_mut(|l| l.timestamp = 70);
+    c.request_exit(&id);
+    let until = 70 + c.commitment(&id).exit_cooldown_secs;
+    (w, id, until)
+}
+#[test]
+fn exit_blocked_by_cooldown() {
+    let (w, id, until) = exiting();
+    w.env.ledger().with_mut(|l| l.timestamp = until - 1);
+    assert_eq!(
+        BondClient::new(&w.env, &w.id).try_finalize_exit(&id),
+        Err(Ok(Error::CooldownActive))
+    );
+    assert_eq!(
+        soroban_sdk::token::Client::new(&w.env, &w.asset).balance(&w.id),
+        2_000_000_000
+    );
+}
+#[test]
+fn exit_blocked_by_open_claim() {
+    let (w, id, until) = exiting();
+    let e = &w.env;
+    e.ledger().with_mut(|l| l.timestamp = until);
+    e.as_contract(&w.id, || {
+        let mut v = crate::storage::commitment(e, id).unwrap();
+        v.open_claims = 1;
+        v.stake_reserved = 100;
+        crate::storage::put_commitment(e, &v);
+    });
+    assert_eq!(
+        BondClient::new(e, &w.id).try_finalize_exit(&id),
+        Err(Ok(Error::OpenClaimsExist))
+    );
+    assert_eq!(
+        soroban_sdk::token::Client::new(e, &w.asset).balance(&w.id),
+        2_000_000_000
+    );
+}
+#[test]
+fn exit_returns_full_stake() {
+    let (w, id, until) = exiting();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let token = soroban_sdk::token::Client::new(e, &w.asset);
+    let before = token.balance(&w.owner);
+    assert!(c.is_covered(&id, &69_999));
+    assert!(!c.is_covered(&id, &70_000));
+    assert_eq!(c.try_request_exit(&id), Err(Ok(Error::CommitmentNotActive)));
+    assert_eq!(
+        c.try_add_stake(&id, &1),
+        Err(Ok(Error::CommitmentNotActive))
+    );
+    assert_eq!(
+        c.try_withdraw_excess(&id, &1),
+        Err(Ok(Error::CommitmentNotActive))
+    );
+    e.ledger().with_mut(|l| l.timestamp = until);
+    c.finalize_exit(&id);
+    assert_eq!(token.balance(&w.owner), before + 2_000_000_000);
+    assert_eq!(token.balance(&w.id), 0);
+    assert_eq!(c.commitment(&id).stake_total, 0);
+    assert_eq!(
+        c.commitment(&id).status,
+        vaeltrix_types::CommitmentStatus::Exited
+    );
+    assert_eq!(
+        c.try_finalize_exit(&id),
+        Err(Ok(Error::CommitmentNotActive))
+    );
+}
+#[test]
+fn exit_from_paused_requires_provider_admin() {
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    e.ledger().with_mut(|l| l.timestamp = 70);
+    c.pause(&id);
+    let wrong = Address::generate(e);
+    let args = (id,).into_val(e);
+    let auth = MockAuthInvoke {
+        contract: &w.id,
+        fn_name: "request_exit",
+        args,
+        sub_invokes: &[],
+    };
+    e.mock_auths(&[MockAuth {
+        address: &wrong,
+        invoke: &auth,
+    }]);
+    assert!(c.try_request_exit(&id).is_err());
+    e.mock_auths(&[MockAuth {
+        address: &w.owner,
+        invoke: &auth,
+    }]);
+    c.request_exit(&id);
+    let until = 70 + c.commitment(&id).exit_cooldown_secs;
+    e.ledger().with_mut(|l| l.timestamp = until);
+    let auth = MockAuthInvoke {
+        contract: &w.id,
+        fn_name: "finalize_exit",
+        args: (id,).into_val(e),
+        sub_invokes: &[],
+    };
+    e.mock_auths(&[MockAuth {
+        address: &wrong,
+        invoke: &auth,
+    }]);
+    assert!(c.try_finalize_exit(&id).is_err());
+    e.mock_auths(&[MockAuth {
+        address: &w.owner,
+        invoke: &auth,
+    }]);
+    c.finalize_exit(&id);
+}
+#[test]
+#[ignore = "VX-307 (#22) implements claim filing and resolution for exiting commitments"]
+fn claim_against_exiting_commitment_still_pays() {}
