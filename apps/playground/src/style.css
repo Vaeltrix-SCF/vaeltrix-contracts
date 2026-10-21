@@ -229,6 +229,14 @@ section {
   align-items: center;
   padding: 12px 0 44px;
 }
+.heading.compact-heading {
+  display: block;
+  padding: 0 0 24px;
+}
+.heading.compact-heading h1 {
+  font-size: clamp(30px, 4vw, 44px);
+  letter-spacing: -0.045em;
+}
 .heading .eyebrow {
   color: var(--accent);
   margin-bottom: 22px;

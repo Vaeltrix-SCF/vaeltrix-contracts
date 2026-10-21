@@ -270,12 +270,7 @@ function App() {
           </a>
         </nav>
         <div className="sidebar-bottom">
-          <p>
-            Payment promises,
-            <br />
-            made enforceable.
-          </p>
-          <External href="https://vaeltrix.vercel.app/docs">Read the blueprint</External>
+          <External href="https://vaeltrix.vercel.app/docs">Docs</External>
           <External href="https://github.com/Vaeltrix-SCF/vaeltrix-contracts">
             Source & issues
           </External>
@@ -304,31 +299,12 @@ function App() {
           </div>
         )}
         <section id="overview" className="overview">
-          <div className="heading">
-            <div>
-              <p className="eyebrow">EXPLORE / SIMULATE / VERIFY</p>
-              <h1>
-                Put the promise
-                <br />
-                to the test.
-              </h1>
-              <p className="intro">
-                Real contracts. Test funds. A hands-on workspace
-                <br className="desktop" /> for Vaeltrix on Stellar testnet.
-              </p>
-            </div>
-            <div className="blueprint" aria-hidden="true">
-              <div className="orbit one" />
-              <div className="orbit two" />
-              <div className="blueprint-core">
-                V<span>STAKE → COVERAGE</span>
-              </div>
-              <span className="coordinate">TESTNET / 001</span>
-            </div>
+          <div className="heading compact-heading">
+            <h1>Testnet playground</h1>
           </div>
           <div className="section-line">
-            <h2>Commitment explorer</h2>
-            <span className="eyebrow">PUBLIC READS · NO WALLET NEEDED</span>
+            <h2>Commitment</h2>
+            <span className="eyebrow">READ ONLY</span>
           </div>
           <form
             className="lookup"
@@ -355,7 +331,7 @@ function App() {
             <button className="primary" disabled={loading || locked}>
               Explore <span aria-hidden="true">→</span>
             </button>
-            <span className="lookup-note">Start with seeded commitment #1</span>
+            <span className="lookup-note">Demo: #1</span>
           </form>
           <div role="status" className="read-status">
             {loading
@@ -375,10 +351,6 @@ function App() {
           {readError && (
             <div className="error" role="alert">
               {readError}
-              <p>
-                Check the ID and network connection, then refresh. Testnet resets can invalidate a
-                deployment.
-              </p>
             </div>
           )}
           <div className="metrics" aria-busy={loading}>
@@ -444,7 +416,7 @@ function App() {
                   {(data.template.target_ms / 1000n).toString()}
                   <span>seconds</span>
                 </p>
-                <p className="muted">On-chain settlement → receiver credit confirmation</p>
+                <p className="muted">Settlement → credit</p>
                 <dl>
                   <dt>Grace period</dt>
                   <dd>{(data.template.grace_ms / 1000n).toString()} seconds</dd>
@@ -467,7 +439,7 @@ function App() {
           )}
           <article className="panel batches">
             <div className="panel-title">
-              <h3>Anchored daily batches</h3>
+              <h3>Daily batches</h3>
               <span className="eyebrow">LATEST SEVEN · UTC DAYS</span>
             </div>
             {data?.batches.length ? (
@@ -494,9 +466,6 @@ function App() {
                     ))}
                   </tbody>
                 </table>
-                <p className="muted">
-                  An empty batch proves anchoring, not successful payment delivery.
-                </p>
                 <Raw title="Inspect batch proofs & observers" value={data.batches} />
               </div>
             ) : (
@@ -513,21 +482,14 @@ function App() {
         <section id="wallet" className="workspace">
           <div className="section-line">
             <div>
-              <p className="eyebrow">YOUR TESTNET WORKSPACE</p>
-              <h2>From wallet to coverage.</h2>
+              <h2>Wallet</h2>
             </div>
-            <span className="badge">WALLET SIGNED</span>
           </div>
-          <p className="muted section-intro">
-            Every contract action is simulated before you review and sign it. Only the provider
-            admin can manage its commitments.
-          </p>
           {!wallet && (
             <div className="connect-callout">
               <span className="step">↗</span>
               <div>
-                <h3>Bring a testnet wallet.</h3>
-                <p>Connect Freighter with Stellar Testnet selected to get started.</p>
+                <h3>Connect your wallet</h3>
                 <External href="https://www.freighter.app/">Get Freighter</External>
               </div>
               <button
@@ -571,241 +533,238 @@ function App() {
               {walletError}
             </p>
           )}
-          <div className="steps-grid">
-            <article className="panel">
-              <span className="eyebrow">01 / FUND YOUR ACCOUNT</span>
-              <h3>Test funds only.</h3>
-              <p>
-                Get test XLM from Friendbot, then add the deployment’s USDC trustline. Ask the
-                operator to send test USDC to your public address; this token has no public faucet.
-              </p>
-              <div className="actions">
-                {wallet ? (
-                  <External
-                    href={`https://friendbot.stellar.org/?addr=${encodeURIComponent(wallet)}`}
-                  >
-                    Get test XLM
-                  </External>
-                ) : (
-                  <span className="muted">Connect to get test XLM</span>
-                )}
-                <button
-                  disabled={!wallet || locked}
-                  onClick={() => {
-                    void task(async () => setPreview(await chain.prepareTrustline(wallet)));
-                  }}
-                >
-                  Review trustline →
-                </button>
-              </div>
-              <Raw
-                title="Test asset & funding request"
-                value={{
-                  asset: "USDC",
-                  issuer: chain.deployment.accounts.usdcIssuer,
-                  recipient: wallet || "Connect your wallet first",
-                  network: "testnet",
-                }}
-              />
-            </article>
-            <article className="panel">
-              <span className="eyebrow">02 / REGISTER A PROVIDER</span>
-              <h3>Your payment identity.</h3>
-              <p>
-                Use a domain you control. Your wallet’s public key becomes the receipt signer. The
-                operator must verify the domain before you can stake.
-              </p>
-              <form
-                onChange={() => setPreview(null)}
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void task(async () => {
-                    const value = homeDomain(domain);
-                    setPreview(
-                      await chain.prepare(
-                        wallet,
-                        chain.registration(wallet, value),
-                        `Register provider ${value} · admin ${wallet}`,
-                      ),
-                    );
-                  });
-                }}
-              >
-                <label htmlFor="domain">Home domain</label>
-                <input
-                  id="domain"
-                  required
-                  placeholder="anchor.example.com"
-                  value={domain}
-                  onChange={(event) => setDomain(event.target.value)}
-                  disabled={!wallet || locked}
-                />
-                <button disabled={!wallet || locked}>Simulate registration →</button>
-              </form>
-            </article>
-            <article className="panel">
-              <span className="eyebrow">03 / CREATE A COMMITMENT</span>
-              <h3>Back your promise.</h3>
-              <p>
-                Template 901, uncapped declared daily volume. The contract enforces minimum stake
-                and the deployment’s stake cap.
-              </p>
-              <form
-                onChange={() => setPreview(null)}
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void task(async () => {
-                    const value = amount(stake);
-                    setPreview(
-                      await chain.prepare(
-                        wallet,
-                        chain.commitCall(providerId, value),
-                        `Commit ${units(value)} test USDC · template 901 · provider ${providerId} · uncapped declared volume`,
-                      ),
-                    );
-                  });
-                }}
-              >
-                <label htmlFor="provider">Your provider</label>
-                <select
-                  id="provider"
-                  value={providerId}
-                  disabled={!wallet || locked}
-                  onChange={(event) => setProviderId(event.target.value)}
-                >
-                  <option value="">
-                    {providers.length ? "Select a provider" : "Register a provider first"}
-                  </option>
-                  {providers.map(({ provider }) => (
-                    <option key={hex(provider.id)} value={hex(provider.id)}>
-                      {provider.home_domain}
-                      {provider.verified ? " · verified" : " · verification pending"}
-                    </option>
-                  ))}
-                </select>
-                <label htmlFor="stake">Stake · test USDC</label>
-                <input
-                  id="stake"
-                  inputMode="decimal"
-                  required
-                  value={stake}
-                  disabled={!wallet || locked}
-                  onChange={(event) => setStake(event.target.value)}
-                />
-                <button
-                  disabled={
-                    locked || !chosenProvider?.verified || chosenProvider.status.tag !== "Active"
-                  }
-                >
-                  Simulate commitment →
-                </button>
-              </form>
-              {chosenProvider && !chosenProvider.verified && (
-                <Raw
-                  title="Operator verification request"
-                  value={{
-                    provider_id: providerId,
-                    home_domain: chosenProvider.home_domain,
-                    registry: chain.deployment.contracts.registry,
-                    action:
-                      "Publish matching .well-known/stellar.toml, then ask the verifier to verify_domain.",
-                  }}
-                />
-              )}
-            </article>
-          </div>
           {wallet && (
-            <article className="panel owned">
-              <h3>Your commitments</h3>
-              <div className="actions">
-                {providers.flatMap(({ provider, commitments }) =>
-                  commitments.map((commitmentId) => (
+            <>
+              <div className="steps-grid">
+                <article className="panel">
+                  <span className="eyebrow">01 / FUND YOUR ACCOUNT</span>
+                  <h3>Fund wallet</h3>
+                  <p>Get test XLM. Add a trustline. Ask the operator for test USDC.</p>
+                  <div className="actions">
+                    {wallet ? (
+                      <External
+                        href={`https://friendbot.stellar.org/?addr=${encodeURIComponent(wallet)}`}
+                      >
+                        Get test XLM
+                      </External>
+                    ) : (
+                      <span className="muted">Connect to get test XLM</span>
+                    )}
                     <button
-                      key={commitmentId.toString()}
-                      disabled={locked}
+                      disabled={!wallet || locked}
                       onClick={() => {
-                        const value = commitmentId.toString();
-                        setLookup(value);
-                        setSelected(value);
-                        setPreview(null);
-                        globalThis.location.hash = "overview";
+                        void task(async () => setPreview(await chain.prepareTrustline(wallet)));
                       }}
                     >
-                      {provider.home_domain} · #{commitmentId.toString()} →
+                      Review trustline →
                     </button>
-                  )),
-                )}
-                {providers.every((entry) => entry.commitments.length === 0) && (
-                  <p className="muted">
-                    No commitments found for this wallet. After a confirmed commit, refresh your
-                    wallet and open its ID here.
-                  </p>
-                )}
+                  </div>
+                  <Raw
+                    title="Test asset & funding request"
+                    value={{
+                      asset: "USDC",
+                      issuer: chain.deployment.accounts.usdcIssuer,
+                      recipient: wallet || "Connect your wallet first",
+                      network: "testnet",
+                    }}
+                  />
+                </article>
+                <article className="panel">
+                  <span className="eyebrow">02 / REGISTER A PROVIDER</span>
+                  <h3>Register provider</h3>
+                  <p>Use your domain. Operator verification is required before staking.</p>
+                  <form
+                    onChange={() => setPreview(null)}
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void task(async () => {
+                        const value = homeDomain(domain);
+                        setPreview(
+                          await chain.prepare(
+                            wallet,
+                            chain.registration(wallet, value),
+                            `Register provider ${value} · admin ${wallet}`,
+                          ),
+                        );
+                      });
+                    }}
+                  >
+                    <label htmlFor="domain">Home domain</label>
+                    <input
+                      id="domain"
+                      required
+                      placeholder="anchor.example.com"
+                      value={domain}
+                      onChange={(event) => setDomain(event.target.value)}
+                      disabled={!wallet || locked}
+                    />
+                    <button disabled={!wallet || locked}>Simulate registration →</button>
+                  </form>
+                </article>
+                <article className="panel">
+                  <span className="eyebrow">03 / CREATE A COMMITMENT</span>
+                  <h3>Create commitment</h3>
+                  <p>Template 901 · no declared volume limit.</p>
+                  <form
+                    onChange={() => setPreview(null)}
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void task(async () => {
+                        const value = amount(stake);
+                        setPreview(
+                          await chain.prepare(
+                            wallet,
+                            chain.commitCall(providerId, value),
+                            `Commit ${units(value)} test USDC · template 901 · provider ${providerId} · uncapped declared volume`,
+                          ),
+                        );
+                      });
+                    }}
+                  >
+                    <label htmlFor="provider">Your provider</label>
+                    <select
+                      id="provider"
+                      value={providerId}
+                      disabled={!wallet || locked}
+                      onChange={(event) => setProviderId(event.target.value)}
+                    >
+                      <option value="">
+                        {providers.length ? "Select a provider" : "Register a provider first"}
+                      </option>
+                      {providers.map(({ provider }) => (
+                        <option key={hex(provider.id)} value={hex(provider.id)}>
+                          {provider.home_domain}
+                          {provider.verified ? " · verified" : " · verification pending"}
+                        </option>
+                      ))}
+                    </select>
+                    <label htmlFor="stake">Stake · test USDC</label>
+                    <input
+                      id="stake"
+                      inputMode="decimal"
+                      required
+                      value={stake}
+                      disabled={!wallet || locked}
+                      onChange={(event) => setStake(event.target.value)}
+                    />
+                    <button
+                      disabled={
+                        locked ||
+                        !chosenProvider?.verified ||
+                        chosenProvider.status.tag !== "Active"
+                      }
+                    >
+                      Simulate commitment →
+                    </button>
+                  </form>
+                  {chosenProvider && !chosenProvider.verified && (
+                    <Raw
+                      title="Operator verification request"
+                      value={{
+                        provider_id: providerId,
+                        home_domain: chosenProvider.home_domain,
+                        registry: chain.deployment.contracts.registry,
+                        action:
+                          "Publish matching .well-known/stellar.toml, then ask the verifier to verify_domain.",
+                      }}
+                    />
+                  )}
+                </article>
               </div>
-            </article>
-          )}
-          <article className="panel manage">
-            <div className="panel-title">
-              <h3>Manage commitment #{selected}</h3>
-              <span className="badge">{own ? "You are the admin" : "View only"}</span>
-            </div>
-            <p className="muted">
-              {own
-                ? "Actions apply to the commitment loaded in the explorer."
-                : "Connect the commitment provider’s admin wallet to manage its stake and coverage."}
-            </p>
-            <form
-              onChange={() => setPreview(null)}
-              onSubmit={(event) => {
-                event.preventDefault();
-                void prepareBond("add_stake");
-              }}
-            >
-              <label htmlFor="changeAmount">Stake change · test USDC</label>
-              <div className="actions">
-                <input
-                  id="changeAmount"
-                  inputMode="decimal"
-                  placeholder="0.0000000"
-                  value={changeAmount}
-                  disabled={!editable || locked}
-                  onChange={(event) => setChangeAmount(event.target.value)}
-                />
-                <button disabled={!editable || locked}>Simulate add stake</button>
-                <button
-                  type="button"
-                  disabled={!editable || locked}
-                  onClick={() => {
-                    void prepareBond("withdraw_excess");
+              {wallet && (
+                <article className="panel owned">
+                  <h3>Your commitments</h3>
+                  <div className="actions">
+                    {providers.flatMap(({ provider, commitments }) =>
+                      commitments.map((commitmentId) => (
+                        <button
+                          key={commitmentId.toString()}
+                          disabled={locked}
+                          onClick={() => {
+                            const value = commitmentId.toString();
+                            setLookup(value);
+                            setSelected(value);
+                            setPreview(null);
+                            globalThis.location.hash = "overview";
+                          }}
+                        >
+                          {provider.home_domain} · #{commitmentId.toString()} →
+                        </button>
+                      )),
+                    )}
+                    {providers.every((entry) => entry.commitments.length === 0) && (
+                      <p className="muted">No commitments yet.</p>
+                    )}
+                  </div>
+                </article>
+              )}
+              <article className="panel manage">
+                <div className="panel-title">
+                  <h3>Manage commitment #{selected}</h3>
+                  <span className="badge">{own ? "You are the admin" : "View only"}</span>
+                </div>
+                <p className="muted">
+                  {own
+                    ? "Preview an action, then sign."
+                    : "Only the provider admin can make changes."}
+                </p>
+                <form
+                  onChange={() => setPreview(null)}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void prepareBond("add_stake");
                   }}
                 >
-                  Simulate withdrawal
-                </button>
-              </div>
-            </form>
-            <div className="actions lifecycle">
-              <button
-                disabled={!own || currentStatus !== "Active" || locked}
-                onClick={() => {
-                  void prepareBond("pause");
-                }}
-              >
-                Simulate pause
-              </button>
-              <button
-                disabled={!own || currentStatus !== "Paused" || locked}
-                onClick={() => {
-                  void prepareBond("resume");
-                }}
-              >
-                Simulate resume
-              </button>
-            </div>
-            <p className="muted">
-              Withdrawals must leave the minimum stake plus reserved funds. Pausing stops new
-              coverage. Existing covered payments retain their claim window.
-            </p>
-          </article>
+                  <label htmlFor="changeAmount">Stake change · test USDC</label>
+                  <div className="actions">
+                    <input
+                      id="changeAmount"
+                      inputMode="decimal"
+                      placeholder="0.0000000"
+                      value={changeAmount}
+                      disabled={!editable || locked}
+                      onChange={(event) => setChangeAmount(event.target.value)}
+                    />
+                    <button disabled={!editable || locked}>Simulate add stake</button>
+                    <button
+                      type="button"
+                      disabled={!editable || locked}
+                      onClick={() => {
+                        void prepareBond("withdraw_excess");
+                      }}
+                    >
+                      Simulate withdrawal
+                    </button>
+                  </div>
+                </form>
+                <div className="actions lifecycle">
+                  <button
+                    disabled={!own || currentStatus !== "Active" || locked}
+                    onClick={() => {
+                      void prepareBond("pause");
+                    }}
+                  >
+                    Simulate pause
+                  </button>
+                  <button
+                    disabled={!own || currentStatus !== "Paused" || locked}
+                    onClick={() => {
+                      void prepareBond("resume");
+                    }}
+                  >
+                    Simulate resume
+                  </button>
+                </div>
+                <details>
+                  <summary>Coverage rules</summary>
+                  <p className="muted">
+                    Keep the minimum stake plus reserves. Pausing stops new coverage; existing
+                    covered payments remain eligible.
+                  </p>
+                </details>
+              </article>
+            </>
+          )}
           {preview && (
             <div
               className="review panel"
@@ -825,10 +784,7 @@ function App() {
                 <dt>Expires</dt>
                 <dd>Re-prepare after two minutes</dd>
               </dl>
-              <p>
-                Contract calls passed simulation. A trustline is a classic Stellar operation and is
-                validated on submission. Wallet signing is your approval to submit.
-              </p>
+              <p>Signing submits this transaction.</p>
               <Raw title="Inspect unsigned transaction XDR" value={preview.xdr} />
               <div className="actions">
                 <button
@@ -866,30 +822,18 @@ function App() {
               >
                 Check transaction status ↻
               </button>
-              <p className="muted">
-                The hash is saved in this browser before submission. An unknown result is never
-                automatically resubmitted.
-              </p>
+              <p className="muted">Hash saved. No automatic resubmission.</p>
             </div>
           )}
-          <div className="not-ready">
-            <span className="eyebrow">STILL IN DEVELOPMENT</span>
-            <h3>Claims, payouts & observer automation</h3>
-            <p>
-              These flows are not available in the deployed foundation. This playground tests
-              identity, stake, coverage controls and anchored batch reads.
-            </p>
-          </div>
+          <p className="muted not-ready">
+            Claims, payouts & observer automation · not available yet.
+          </p>
         </section>
         <section id="contracts">
           <div className="section-line">
-            <h2>Deployment directory</h2>
+            <h2>Contracts</h2>
             <span className="eyebrow">STELLAR TESTNET</span>
           </div>
-          <p className="muted section-intro">
-            Addresses come from the tracked testnet deployment manifest. Testnet resets require a
-            new deployment.
-          </p>
           <div className="contract-list">
             {Object.entries(chain.deployment.contracts).map(([name, address]) => (
               <div className="contract-row" key={name}>
@@ -903,13 +847,11 @@ function App() {
         </section>
         <section id="api">
           <div className="section-line">
-            <h2>Backend diagnostics</h2>
-            <span className="badge">OPTIONAL API URL</span>
+            <h2>API</h2>
+            <span className="badge">OPTIONAL</span>
           </div>
           <p className="muted section-intro">
-            No hosted API is configured. If your team runs the API service, enter its origin to
-            check the two implemented endpoints. These checks do not test business flows or database
-            readiness.
+            No API connected. Enter your server URL to check health and available routes.
           </p>
           <form
             className="api-form"
@@ -950,8 +892,7 @@ function App() {
               <button disabled={apiBusy}>{apiBusy ? "Checking…" : "Check API →"}</button>
             </div>
             <p id="api-help" className="muted">
-              Requests go directly from your browser. The server needs CORS support; HTTPS pages may
-              block HTTP APIs.
+              Server must allow this origin (CORS).
             </p>
           </form>
           {apiError && (
@@ -976,7 +917,7 @@ function App() {
           <span className="wordmark">
             vaeltrix<span className="eyebrow">TESTNET PLAYGROUND</span>
           </span>
-          <span>Test funds have no monetary value.</span>
+          <span>Test funds only.</span>
         </footer>
       </main>
     </div>
