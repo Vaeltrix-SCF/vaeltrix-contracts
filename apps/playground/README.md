@@ -11,7 +11,9 @@ pnpm --filter @vaeltrix/playground build
 pnpm test
 ```
 
-Open the printed local URL in a browser with Freighter installed. Public reads need no wallet. The app imports `deployments/testnet.json` and reads the deployed Wasm specifications; generated binding scaffolds are not used. Update the tracked deployment manifest after any testnet reset.
+Live playground: https://vaeltrix-testnet.vercel.app
+
+Open the live or local URL directly in desktop Brave or Chrome with the [Freighter extension](https://freighter.app/) installed and unlocked. Select Stellar Testnet, reload the page, then connect. A wallet installed in another browser/profile is not available to this page. Public reads need no wallet. The app imports `deployments/testnet.json` and reads the deployed Wasm specifications; generated binding scaffolds are not used. Update the tracked deployment manifest after any testnet reset.
 
 ## Tester walkthrough
 
@@ -30,6 +32,20 @@ Exit transactions are outside this first UI. The explorer shows the real frozen 
 Start the existing API with its dedicated read-only database login as described in the service docs, then enter its HTTP(S) origin. `/healthz` checks the process and `/v1/openapi.json` exposes implemented routes. Neither proves database readiness or business-flow availability. CORS must permit the playground origin; hosted HTTPS pages generally cannot call an insecure remote HTTP API. No hosted API is assumed.
 
 ## Hosting
+
+Production is the separate Vercel project `vaeltrix-testnet` at https://vaeltrix-testnet.vercel.app. The marketing site remains in project `vaeltrix`.
+
+Build from the repository root, link the generated output to this project, then deploy only that static directory:
+
+```sh
+pnpm --filter @vaeltrix/playground build
+vercel link --cwd apps/playground/dist --project vaeltrix-testnet --scope marvelousmicheals-projects --yes
+vercel deploy --cwd apps/playground/dist --scope marvelousmicheals-projects --prod --yes
+```
+
+Use framework **Other**, no install/build commands on Vercel, and output directory `.` for this already-built static output. Do not deploy the monorepo or `.stellar` directory. The initial production deployment was built from commit `ce5231297c04d98efd2a2827a3055e93cf7746e2` and verified with an unauthenticated HTTP request and Vercel readiness inspection. Updates are manual CLI deployments; automatic Git deployments are not configured.
+
+### Previous private preview
 
 The app is static. Build output is `apps/playground/dist`; deploy it on an HTTPS static host to use a wallet extension. The tracked `.openai/hosting.json` retains the private Sites identity. Registration alone is not publication.
 
