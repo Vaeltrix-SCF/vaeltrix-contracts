@@ -28,7 +28,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:vectors": "cargo test -p vaeltrix-verdict -p vaeltrix-types --test vectors && vitest run packages/core/test/vectors.test.ts"
+    "test:vectors": "cargo test -p vaeltrix-verdict -p vaeltrix-types --test vectors && vitest run packages/core/test/vectors.test.ts",
+    "guide:export": "tsx scripts/export-guide.ts",
+    "issues:import": "tsx scripts/issues.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
