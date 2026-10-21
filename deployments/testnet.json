@@ -1,0 +1,43 @@
+{
+  "network": "testnet",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "deployedAt": "2026-10-21T08:27:01.521Z",
+  "gitSha": "16ae29655bc5420977ccfaa266aacde5bf13be09",
+  "contracts": {
+    "registry": "CBBZQ577QYKADNBAYBYN56Q3ZDTDQYCBOGREHBFEVOWOI5F27TJBE6MO",
+    "scoreboard": "CD4TA5VDQUHF2LV5H5LWQSXRUSWTQYZN23MONYYUZQAJ5JBOEGYAP5EC",
+    "bond": "CCYLDMTA4CTFF2VHULUCCBNCBMN3G7MA33EZ2OFYMIRSIKX3PYUHCUAI",
+    "usdc": "CB2CFWENJ2M5JXWBGUOKO75QVIFJ2EY5WOIOHR6FFYTXAKGS2S3XOIM4"
+  },
+  "wasmHashes": {
+    "registry": "63590fb3533e18870ffb71354d0da91713caeaf9369bff32eadc6bf5e80b5a6b",
+    "scoreboard": "c522eef5bfdf455eed09a1ec6b937458be2db850ed7284b93547b823b4dee3dc",
+    "bond": "cd9fb939919947617475189ccf693b5f43f4bc954e7e8e6d0d1c3fad2baa096c"
+  },
+  "accounts": {
+    "admin": "GCZL57Q3MFIUMMG2XGSND7XDRYTFIQSFJXMT5AIJIDHQP4WONWWPIQK2",
+    "observer": "GBMQHKORPRE7RJR2FUSQZGJLFSSEBSOX4EZHO3N2R4ZRXCQZJ7ZUV35R",
+    "usdcIssuer": "GC2QFPSAQWCCTN7Y2C5QRUQRA6WMTOW6AXGNF3WB4TNBOTDUOBY6XRP7",
+    "providerAdmin": "GAXN3KJT36RUDCOFGVUIUAD6IXWHGC5X3RIZQPV6A222GL4YZEYDG5UT",
+    "client": "GC7QZSFSZSAUFJE5LHWSV25UJTRXN4KHQHEKDX2YK6DDK4FHEQ4DR3XR",
+    "verifier": "GDZTVBIG3R5ZQGPY4LXDM4JSU33NNIDWBE335C7AW7E53HXIV4SS4IXH"
+  },
+  "startLedger": 5309530,
+  "transactions": [
+    {
+      "contract": "registry",
+      "hash": "18edcbe108fd022875746434a18607ad43b8933314a8ca79ca0246a8d5f706dd",
+      "ledger": 5309530
+    },
+    {
+      "contract": "scoreboard",
+      "hash": "c749a07f72742c8e246c42324f03806bb2a26d4a376568dcbf2ed4cb3a28f8dd",
+      "ledger": 5309534
+    },
+    {
+      "contract": "bond",
+      "hash": "3d7f1bf387467b97a1f740daac3fc6bbd2483ddd3998ab90524f0bacedd727ef",
+      "ledger": 5309539
+    }
+  ]
+}
