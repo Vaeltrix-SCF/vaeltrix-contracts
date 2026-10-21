@@ -1,7 +1,7 @@
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #17212b;
-  background: #fff;
+  font-family: "Space Grotesk Variable", sans-serif;
+  color: #deedf4;
+  background: #082d4a;
   font-synthesis: none;
 }
 * {
@@ -13,7 +13,7 @@ body {
   line-height: 1.5;
 }
 main {
-  max-width: 940px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 24px;
 }
@@ -27,7 +27,7 @@ header {
 header span,
 .muted,
 .read-status {
-  color: #526170;
+  color: #a6c0d1;
   font-size: 13px;
 }
 h1 {
@@ -49,21 +49,21 @@ p {
   margin: 8px 0 14px;
 }
 section + section {
-  border-top: 1px solid #dce1e6;
+  border-top: 1px solid #365e78;
   margin-top: 24px;
   padding-top: 24px;
 }
 a {
-  color: #164e78;
+  color: #93e4ef;
   text-underline-offset: 3px;
 }
 button,
 input,
 select {
   font: inherit;
-  border: 1px solid #b9c2ca;
-  border-radius: 4px;
-  background: #fff;
+  border: 1px solid #365e78;
+  border-radius: 0;
+  background: #082d4a;
   color: inherit;
   min-height: 40px;
   padding: 8px 12px;
@@ -73,25 +73,25 @@ button {
   white-space: normal;
 }
 button:hover:not(:disabled) {
-  background: #f0f3f6;
+  background: #154660;
 }
 button:disabled,
 input:disabled,
 select:disabled {
-  color: #6c7680;
-  background: #f6f7f8;
+  color: #a3b5c2;
+  background: #17384f;
   cursor: not-allowed;
 }
 .primary {
-  color: #fff;
-  background: #163e5d;
-  border-color: #163e5d;
+  color: #082d4a;
+  background: #93e4ef;
+  border-color: #93e4ef;
 }
 .primary:hover:not(:disabled) {
-  background: #244f6e;
+  background: #c8f5f7;
 }
 :focus-visible {
-  outline: 2px solid #166caa;
+  outline: 2px solid #93e4ef;
   outline-offset: 3px;
 }
 label {
@@ -106,7 +106,7 @@ select {
 }
 code,
 pre {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "IBM Plex Mono", monospace;
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -165,7 +165,7 @@ td {
 .read-status button {
   border: 0;
   padding: 6px 0 6px 12px;
-  color: #164e78;
+  color: #93e4ef;
   min-height: 36px;
 }
 dl {
@@ -175,7 +175,7 @@ dl {
   margin: 14px 0;
 }
 dt {
-  color: #526170;
+  color: #a6c0d1;
 }
 dd {
   margin: 0;
@@ -186,14 +186,14 @@ details {
 }
 summary {
   cursor: pointer;
-  color: #164e78;
+  color: #93e4ef;
   width: fit-content;
   min-height: 34px;
   padding: 5px 0;
   font-size: 13px;
 }
 pre {
-  background: #f4f6f8;
+  background: #06283f;
   padding: 12px;
   white-space: pre-wrap;
   max-height: 320px;
@@ -236,7 +236,7 @@ pre {
   margin-top: 22px;
 }
 .steps-grid p {
-  color: #526170;
+  color: #a6c0d1;
   font-size: 13px;
 }
 .steps-grid form {
@@ -262,7 +262,7 @@ article {
   gap: 12px;
 }
 .badge {
-  color: #526170;
+  color: #a6c0d1;
   font-size: 12px;
 }
 .manage form {
@@ -276,7 +276,7 @@ article {
 }
 .review,
 .transaction {
-  border-top: 1px solid #dce1e6;
+  border-top: 1px solid #365e78;
   padding-top: 20px;
   margin-top: 24px;
 }
@@ -291,8 +291,8 @@ article {
   overflow-wrap: anywhere;
 }
 .error {
-  color: #8b241c;
-  background: #fff1ef;
+  color: #ffe4c8;
+  background: #463e3d;
   padding: 10px 12px;
   margin: 12px 0;
   overflow-wrap: anywhere;
@@ -347,5 +347,228 @@ article {
   }
   .review dl {
     grid-template-columns: 1fr;
+  }
+}
+
+header {
+  border-bottom: 1px solid #365e78;
+  padding: 8px 0 24px;
+  align-items: center;
+}
+header h1 {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 29px;
+  letter-spacing: -0.05em;
+}
+header h1 small {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #a6c0d1;
+  padding-left: 16px;
+  margin-left: 4px;
+  border-left: 1px solid #365e78;
+}
+.brand {
+  width: 25px;
+  height: 28px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  transform: skew(-20deg);
+}
+.brand i {
+  display: block;
+  background: #93e4ef;
+  width: 5px;
+  height: 100%;
+}
+.brand i:first-child {
+  height: 55%;
+}
+.brand i:nth-child(2) {
+  height: 78%;
+}
+h2 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+h3 {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+.commitment-heading {
+  margin-top: 0;
+}
+.read-status {
+  margin: 14px 0 20px;
+  font-size: 11px;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid #365e78;
+  margin-bottom: 20px;
+}
+.metrics article {
+  padding: 22px 24px;
+  border-right: 1px solid #365e78;
+}
+.metrics article:last-child {
+  border-right: 0;
+}
+.eyebrow {
+  font:
+    10px "IBM Plex Mono",
+    monospace;
+  color: #a6c0d1;
+  letter-spacing: 0.03em;
+}
+.metrics strong {
+  display: block;
+  font-size: 40px;
+  letter-spacing: -0.045em;
+  font-weight: 400;
+  margin: 10px 0 4px;
+  overflow-wrap: anywhere;
+}
+.metrics .state {
+  font-size: 34px;
+  color: #93e4ef;
+}
+.metrics small {
+  color: #a6c0d1;
+  font-size: 12px;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.panel {
+  padding: 22px;
+  border: 1px solid #365e78;
+  background: #0a3351;
+}
+.panel-title {
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+.panel-title h3 {
+  margin: 0;
+}
+.badge {
+  font-size: 10px;
+  color: #93e4ef;
+}
+.provider-domain {
+  font-size: 20px;
+  margin: 20px 0;
+  overflow-wrap: anywhere;
+}
+.detail-grid dl {
+  grid-template-columns: 1fr 1.2fr;
+  font-size: 12px;
+  gap: 13px 12px;
+  margin: 22px 0;
+}
+.detail-grid dd {
+  text-align: right;
+}
+.detail-grid details {
+  border-top: 1px dashed #365e78;
+  padding-top: 8px;
+}
+.target {
+  font-size: 64px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  margin: 18px 0 12px;
+}
+.target span {
+  color: #a6c0d1;
+  font-size: 15px;
+  letter-spacing: 0;
+  margin-left: 12px;
+}
+.batches {
+  margin-top: 20px;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+.batches table {
+  table-layout: auto;
+  font-size: 12px;
+}
+.batches th {
+  color: #a6c0d1;
+  font-weight: 400;
+}
+.batches td,
+.batches th {
+  border-bottom: 1px solid #365e78;
+  padding-right: 12px;
+}
+.deployment {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #365e78;
+}
+.deployment h2 {
+  font-size: 18px;
+}
+.steps-grid .panel {
+  padding: 18px;
+}
+.review,
+.transaction {
+  padding: 20px;
+}
+@media (max-width: 650px) {
+  header h1 {
+    font-size: 25px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  header h1 small {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    font-size: 11px;
+    flex-basis: 100%;
+  }
+  .commitment-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .metrics article {
+    padding: 15px 12px;
+  }
+  .metrics strong {
+    font-size: 27px;
+  }
+  .metrics .state {
+    font-size: 24px;
+  }
+  .eyebrow {
+    font-size: 8px;
+  }
+  .metrics small {
+    font-size: 10px;
+  }
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .panel {
+    padding: 18px;
+  }
+  .detail-grid dl {
+    font-size: 12px;
   }
 }

@@ -12,6 +12,8 @@ import {
   units,
   submissionRejected,
 } from "./model";
+import "@fontsource-variable/space-grotesk";
+import "@fontsource/ibm-plex-mono/400.css";
 import "./style.css";
 
 const explorer = "https://stellar.expert/explorer/testnet";
@@ -237,27 +239,19 @@ function App() {
   return (
     <main id="main">
       <header>
-        <h1>Vaeltrix testnet</h1>
+        <h1>
+          <span className="brand" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          vaeltrix <small>Testnet playground</small>
+        </h1>
         <span>Test funds only</span>
       </header>
       <section id="testnet">
-        <h2>Deployed contracts</h2>
-        <table className="contracts">
-          <tbody>
-            {Object.entries(chain.deployment.contracts).map(([name, address]) => (
-              <tr key={name}>
-                <th scope="row">{name === "usdc" ? "Test USDC" : name}</th>
-                <td>
-                  <External href={`${explorer}/contract/${address}`}>
-                    <code>{address}</code>
-                  </External>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
         <div className="commitment-heading">
-          <h2>Commitment</h2>
+          <h2>Commitment explorer</h2>
           <form
             className="lookup"
             onSubmit={(event) => {
@@ -273,18 +267,24 @@ function App() {
               }
             }}
           >
-            <label htmlFor="commitment">ID</label>
+            <label htmlFor="commitment">Commitment ID</label>
             <input
               id="commitment"
               inputMode="numeric"
               value={lookup}
               onChange={(event) => setLookup(event.target.value)}
             />
-            <button disabled={loading || locked}>Load</button>
+            <button disabled={loading || locked}>Explore</button>
           </form>
         </div>
         <div className="read-status" role="status">
-          <span>{loading ? "Loading…" : data ? `Updated ${data.fetchedAt}` : "Unavailable"}</span>
+          <span>
+            {loading
+              ? "Loading…"
+              : data
+                ? `Ledger ${data.ledger.toLocaleString()} · updated ${data.fetchedAt}`
+                : "Unavailable"}
+          </span>
           <button
             disabled={loading}
             onClick={() => {
@@ -299,37 +299,149 @@ function App() {
             {readError}
           </p>
         )}
+        <div className="metrics" aria-busy={loading}>
+          <article>
+            <span className="eyebrow">TOTAL STAKE</span>
+            <strong>{data ? units(data.commitment.stake_total) : "—"}</strong>
+            <small>test USDC</small>
+          </article>
+          <article>
+            <span className="eyebrow">AVAILABLE STAKE</span>
+            <strong>{data ? units(data.available) : "—"}</strong>
+            <small>
+              {data ? `${units(data.commitment.stake_reserved)} reserved` : "Awaiting chain data"}
+            </small>
+          </article>
+          <article>
+            <span className="eyebrow">COMMITMENT STATUS</span>
+            <strong className="state">{data?.commitment.status.tag ?? "—"}</strong>
+            <small>
+              {data
+                ? `Template ${data.commitment.template_id} · v${data.commitment.template_version}`
+                : "Awaiting chain data"}
+            </small>
+          </article>
+        </div>
         {data && (
-          <>
-            <dl className="facts">
-              <dt>Status</dt>
-              <dd>{data.commitment.status.tag}</dd>
-              <dt>Stake</dt>
-              <dd>{units(data.commitment.stake_total)} test USDC</dd>
-              <dt>Available</dt>
-              <dd>{units(data.available)} test USDC</dd>
-              <dt>Provider</dt>
-              <dd>
-                {data.provider.home_domain}
-                {!data.provider.verified && " (unverified)"}
-              </dd>
-              <dt>Template</dt>
-              <dd>
-                {data.template.id} · {(data.template.target_ms / 1000n).toString()} seconds
-              </dd>
-            </dl>
-            <Raw
-              title="Contract state"
-              value={{
-                ledger: data.ledger,
-                commitment: data.commitment,
-                provider: data.provider,
-                template: data.template,
-                batches: data.batches,
-              }}
-            />
-          </>
+          <div className="detail-grid">
+            <article className="panel">
+              <div className="panel-title">
+                <h3>Provider</h3>
+                <span className="badge">
+                  {data.provider.verified ? "Domain verified" : "Needs verification"}
+                </span>
+              </div>
+              <p className="provider-domain">{data.provider.home_domain}</p>
+              <dl>
+                <dt>Provider status</dt>
+                <dd>{data.provider.status.tag}</dd>
+                <dt>Admin</dt>
+                <dd>
+                  <External href={`${explorer}/account/${data.provider.admin}`}>
+                    {`${data.provider.admin.slice(0, 7)}…${data.provider.admin.slice(-6)}`}
+                  </External>
+                </dd>
+                <dt>Minimum stake</dt>
+                <dd>{units(data.commitment.min_stake)} test USDC</dd>
+                <dt>Open claims</dt>
+                <dd>{data.commitment.open_claims}</dd>
+                <dt>Frozen exit cooldown</dt>
+                <dd>{data.commitment.exit_cooldown_secs.toLocaleString()} seconds</dd>
+              </dl>
+              <Raw
+                title="Inspect commitment & provider"
+                value={{ commitment: data.commitment, provider: data.provider }}
+              />
+            </article>
+            <article className="panel template">
+              <div className="panel-title">
+                <h3>Template</h3>
+                <span className="eyebrow">SLA / {data.template.id}</span>
+              </div>
+              <p className="target">
+                {(data.template.target_ms / 1000n).toString()}
+                <span>seconds</span>
+              </p>
+              <p className="muted">Settlement → credit</p>
+              <dl>
+                <dt>Grace period</dt>
+                <dd>{(data.template.grace_ms / 1000n).toString()} seconds</dd>
+                <dt>Payment range</dt>
+                <dd>
+                  {units(data.template.scope.min_amount)}–{units(data.template.scope.max_amount)}{" "}
+                  test USDC
+                </dd>
+                <dt>Penalty</dt>
+                <dd>
+                  {data.template.penalty.values[0].bps} basis points · capped at{" "}
+                  {units(data.template.penalty.values[0].cap)}
+                </dd>
+                <dt>Claim window</dt>
+                <dd>{data.template.claim_window_secs.toString()} seconds</dd>
+              </dl>
+              <Raw title="Inspect frozen template version" value={data.template} />
+            </article>
+          </div>
         )}
+        <article className="panel batches">
+          <div className="panel-title">
+            <h3>Daily batches</h3>
+            <span className="eyebrow">LATEST SEVEN · UTC DAYS</span>
+          </div>
+          {data?.batches.length ? (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Period</th>
+                    <th>Payments</th>
+                    <th>On time</th>
+                    <th>Breaches</th>
+                    <th>Volume · test USDC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.batches.map(({ period, batch }) => (
+                    <tr key={period.toString()}>
+                      <td>{period.toString()}</td>
+                      <td>{batch.stats.payments}</td>
+                      <td>{batch.stats.on_time}</td>
+                      <td>{batch.stats.breaches}</td>
+                      <td>{units(batch.stats.volume)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Raw title="Inspect batch proofs & observers" value={data.batches} />
+            </div>
+          ) : (
+            <p className="muted">
+              {loading
+                ? "Reading anchored periods…"
+                : data
+                  ? "No batches anchored for this commitment yet."
+                  : "Load a commitment to inspect its batches."}
+            </p>
+          )}
+        </article>
+        <div className="deployment">
+          {" "}
+          <h2>Deployed contracts</h2>
+          <table className="contracts">
+            <tbody>
+              {Object.entries(chain.deployment.contracts).map(([name, address]) => (
+                <tr key={name}>
+                  <th scope="row">{name === "usdc" ? "Test USDC" : name}</th>
+                  <td>
+                    <External href={`${explorer}/contract/${address}`}>
+                      <code>{address}</code>
+                    </External>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>{" "}
         <details className="optional">
           <summary>API check</summary>{" "}
           <form
