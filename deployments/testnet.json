@@ -39,5 +39,10 @@
       "hash": "3d7f1bf387467b97a1f740daac3fc6bbd2483ddd3998ab90524f0bacedd727ef",
       "ledger": 5309539
     }
-  ]
+  ],
+  "seed": {
+    "providerId": "6e25c94ba9c8b56d37622018e3d748adc3733a96aa90e46dcd6a794044da16e9",
+    "commitmentId": "1",
+    "observerActionId": 1
+  }
 }
