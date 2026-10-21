@@ -343,3 +343,85 @@ fn stake_rejects_invalid_volume_overflow_and_unauthorized_owner() {
     }
     assert_eq!(c.commitment(&id).stake_total, 2_000_000_000);
 }
+
+#[test]
+fn pause_resume_coverage_windows() {
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    assert!(!c.is_covered(&id, &59_999));
+    assert!(c.is_covered(&id, &60_000));
+    e.ledger().with_mut(|l| l.timestamp = 70);
+    c.pause(&id);
+    assert!(c.is_covered(&id, &69_999));
+    assert!(!c.is_covered(&id, &70_000));
+    assert!(!c.is_covered(&id, &80_000));
+    assert_eq!(c.try_pause(&id), Err(Ok(Error::CommitmentNotActive)));
+    e.ledger().with_mut(|l| l.timestamp = 80);
+    c.resume(&id);
+    assert!(!c.is_covered(&id, &79_999));
+    assert!(c.is_covered(&id, &80_000));
+    assert!(c.is_covered(&id, &90_000));
+    assert_eq!(c.try_resume(&id), Err(Ok(Error::CommitmentNotActive)));
+    e.ledger().with_mut(|l| l.timestamp = 90);
+    c.pause(&id);
+    assert!(c.is_covered(&id, &75_000));
+    assert!(!c.is_covered(&id, &90_000));
+    e.ledger().with_mut(|l| l.timestamp = 100);
+    c.resume(&id);
+    assert!(!c.is_covered(&id, &99_999));
+    assert!(c.is_covered(&id, &100_000));
+    // Only the most recent pause is retained in V0 (D6).
+    assert!(c.is_covered(&id, &75_000));
+    e.as_contract(&w.id, || {
+        let mut v = crate::storage::commitment(e, id).unwrap();
+        v.effective_to = Some(120);
+        v.exit_requested_at = None;
+        crate::storage::put_commitment(e, &v);
+    });
+    assert!(c.is_covered(&id, &119_999));
+    assert!(!c.is_covered(&id, &120_000));
+    e.as_contract(&w.id, || {
+        let mut v = crate::storage::commitment(e, id).unwrap();
+        v.exit_requested_at = Some(110);
+        crate::storage::put_commitment(e, &v);
+    });
+    assert!(c.is_covered(&id, &109_999));
+    assert!(!c.is_covered(&id, &110_000));
+    assert!(!c.is_covered(&id, &120_000));
+}
+#[test]
+fn coverage_mutations_require_provider_admin() {
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    let wrong = Address::generate(e);
+    for (name, at) in [("pause", 70), ("resume", 80)] {
+        e.ledger().with_mut(|l| l.timestamp = at);
+        let invoke = MockAuthInvoke {
+            contract: &w.id,
+            fn_name: name,
+            args: (id,).into_val(e),
+            sub_invokes: &[],
+        };
+        e.mock_auths(&[MockAuth {
+            address: &wrong,
+            invoke: &invoke,
+        }]);
+        assert!(
+            e.try_invoke_contract::<(), Error>(
+                &w.id,
+                &soroban_sdk::Symbol::new(e, name),
+                (id,).into_val(e)
+            )
+            .is_err()
+        );
+        e.mock_auths(&[MockAuth {
+            address: &w.owner,
+            invoke: &invoke,
+        }]);
+        e.invoke_contract::<()>(&w.id, &soroban_sdk::Symbol::new(e, name), (id,).into_val(e));
+    }
+}
