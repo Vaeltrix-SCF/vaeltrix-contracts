@@ -17,6 +17,7 @@ vaeltrix-types = { workspace = true }
 vaeltrix-verdict = { workspace = true }
 
 [dev-dependencies]
+vaeltrix-registry = { path = "../registry" }
 soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [lints]

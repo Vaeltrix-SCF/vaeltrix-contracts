@@ -2185,6 +2185,7 @@ name = "vaeltrix-scoreboard"
 version = "0.1.0"
 dependencies = [
  "soroban-sdk",
+ "vaeltrix-registry",
  "vaeltrix-types",
  "vaeltrix-verdict",
 ]
