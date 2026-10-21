@@ -39,3 +39,17 @@ pub struct Resumed {
     pub commitment_id: u64,
     pub at: u64,
 }
+// Exit lifecycle (VX-304).
+#[contractevent(topics=["exit_req"])]
+pub struct ExitRequested {
+    #[topic]
+    pub commitment_id: u64,
+    pub at: u64,
+}
+#[contractevent(topics=["exit_fin"])]
+pub struct ExitFinalized {
+    #[topic]
+    pub commitment_id: u64,
+    pub at: u64,
+    pub amount: i128,
+}
