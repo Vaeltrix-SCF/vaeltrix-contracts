@@ -962,3 +962,123 @@ fn wire_events(env: &Env) -> Vec<(Address, Vec<soroban_sdk::Val>, soroban_sdk::V
     }
     result
 }
+
+#[test]
+fn auth_matrix_registry() {
+    use soroban_sdk::{BytesN, String, Symbol, Val};
+    let env = Env::default();
+    let (id, admin) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    let stranger = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let verifier = Address::generate(&env);
+    // Every protected call first receives an otherwise exact invocation signed
+    // by the wrong principal, then the same invocation with the required signer.
+    let call = |name: &str, args: Vec<Val>, signer: &Address| -> Val {
+        let invoke = MockAuthInvoke {
+            contract: &id,
+            fn_name: name,
+            args: args.clone(),
+            sub_invokes: &[],
+        };
+        env.mock_auths(&[MockAuth {
+            address: &stranger,
+            invoke: &invoke,
+        }]);
+        assert!(
+            env.try_invoke_contract::<Val, Error>(&id, &Symbol::new(&env, name), args.clone())
+                .is_err(),
+            "wrong signer accepted for {name}"
+        );
+        env.mock_auths(&[MockAuth {
+            address: signer,
+            invoke: &invoke,
+        }]);
+        env.invoke_contract(&id, &Symbol::new(&env, name), args)
+    };
+    let domain = String::from_str(&env, "anchor.example");
+    let signers = Vec::from_array(&env, [BytesN::<32>::from_array(&env, &[1; 32])]);
+    let metadata = String::from_str(&env, "");
+    let p: BytesN<32> = soroban_sdk::TryFromVal::try_from_val(
+        &env,
+        &call(
+            "register_provider",
+            (owner.clone(), domain, signers.clone(), metadata.clone()).into_val(&env),
+            &owner,
+        ),
+    )
+    .unwrap();
+    call(
+        "update_signers",
+        (p.clone(), signers).into_val(&env),
+        &owner,
+    );
+    call(
+        "update_metadata",
+        (p.clone(), metadata).into_val(&env),
+        &owner,
+    );
+    let a: u32 = soroban_sdk::TryFromVal::try_from_val(
+        &env,
+        &call(
+            "propose",
+            (ActionKind::SetVerifier(verifier.clone()),).into_val(&env),
+            &admin,
+        ),
+    )
+    .unwrap();
+    env.mock_auths(&[]);
+    assert_eq!(c.try_execute(&a), Err(Ok(Error::TimelockActive)));
+    env.ledger().with_mut(|l| l.timestamp = 60);
+    c.execute(&a); // No authorised invocation: execute is permissionless.
+    call("verify_domain", (p.clone(),).into_val(&env), &verifier);
+    call("unverify_domain", (p.clone(),).into_val(&env), &verifier);
+    call(
+        "suspend_provider",
+        (p.clone(), Symbol::new(&env, "audit")).into_val(&env),
+        &admin,
+    );
+    call("reinstate_provider", (p,).into_val(&env), &admin);
+    let a: u32 = soroban_sdk::TryFromVal::try_from_val(
+        &env,
+        &call(
+            "propose",
+            (ActionKind::SetParams(c.params()),).into_val(&env),
+            &admin,
+        ),
+    )
+    .unwrap();
+    call("cancel", (a,).into_val(&env), &admin);
+    let mut t = template(&env, &id);
+    call("propose_template", (t.clone(),).into_val(&env), &admin);
+    call("cancel_template", (901_u32, 1_u32).into_val(&env), &admin);
+    t.version = 2;
+    call("propose_template", (t,).into_val(&env), &admin);
+    env.mock_auths(&[]);
+    assert_eq!(
+        c.try_activate_template(&901, &2),
+        Err(Ok(Error::TimelockActive))
+    );
+    env.ledger().with_mut(|l| l.timestamp = 120);
+    c.activate_template(&901, &2);
+    call(
+        "deprecate_template",
+        (901_u32, 2_u32).into_val(&env),
+        &admin,
+    );
+    let next = Address::generate(&env);
+    call("propose_admin", (next.clone(),).into_val(&env), &admin);
+    call("accept_admin", Vec::new(&env), &next);
+    assert_eq!(c.admin(), next);
+    // A correctly signed former admin is no longer authorised.
+    env.mock_auths(&[MockAuth {
+        address: &admin,
+        invoke: &MockAuthInvoke {
+            contract: &id,
+            fn_name: "propose_admin",
+            args: (admin.clone(),).into_val(&env),
+            sub_invokes: &[],
+        },
+    }]);
+    assert!(c.try_propose_admin(&admin).is_err());
+}
