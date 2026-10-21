@@ -120,7 +120,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
     if (action.cancelled || action.executed)
       throw new Error("Observer proposal cannot be executed; reconcile registry state");
     await waitUntil(BigInt(action.eta) + 5n);
-    invoke(reg, "execute", { id: d.seed.observerActionId }, "deployer", true);
+    invoke(reg, "execute", { action_id: d.seed.observerActionId }, "deployer", true);
     if (!invoke<boolean>(reg, "is_active_observer", { observer: d.accounts.observer }))
       throw new Error("Observer activation failed");
   }
