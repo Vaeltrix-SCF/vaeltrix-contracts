@@ -1,10 +1,550 @@
-//! Unit tests for `vaeltrix_bond`. Required test names are listed in guide §9.2.
-
-use crate::Bond;
-use soroban_sdk::Env;
+//! Bond construction and upgrade tests (VX-301).
+#![allow(clippy::unwrap_used, clippy::arithmetic_side_effects)]
+extern crate std;
+use crate::testutils::params;
+use crate::{Bond, BondClient, DataKey};
+use soroban_sdk::{
+    Address, BytesN, Env, IntoVal,
+    testutils::{Address as _, Ledger, MockAuth, MockAuthInvoke},
+};
+use vaeltrix_types::Error;
+#[test]
+fn constructor_stores_addresses_and_counters() {
+    let e = Env::default();
+    let admin = Address::generate(&e);
+    let registry = e.register(vaeltrix_registry::Registry, (admin.clone(), params(&e)));
+    let scoreboard = Address::generate(&e);
+    let id = e.register(Bond, (admin.clone(), registry.clone(), scoreboard.clone()));
+    let c = BondClient::new(&e, &id);
+    assert_eq!(c.admin(), admin);
+    assert_eq!(c.registry(), registry);
+    assert_eq!(c.scoreboard(), scoreboard);
+    e.as_contract(&id, || {
+        assert_eq!(
+            e.storage()
+                .instance()
+                .get::<_, u64>(&DataKey::NextCommitmentId),
+            Some(1)
+        );
+        assert_eq!(
+            e.storage().instance().get::<_, u64>(&DataKey::NextClaimId),
+            Some(1)
+        );
+    });
+    assert_eq!(c.try_execute_upgrade(), Err(Ok(Error::NothingPending)));
+}
+#[test]
+fn upgrade_respects_registry_timelock_and_admin_auth() {
+    let e = Env::default();
+    let admin = Address::generate(&e);
+    let registry = e.register(vaeltrix_registry::Registry, (admin.clone(), params(&e)));
+    let id = e.register(
+        Bond,
+        (admin.clone(), registry.clone(), Address::generate(&e)),
+    );
+    let c = BondClient::new(&e, &id);
+    let hash = e
+        .deployer()
+        .upload_contract_wasm(&include_bytes!("../../registry/testdata/upgrade.wasm")[..]);
+    let wrong = Address::generate(&e);
+    let auth = MockAuthInvoke {
+        contract: &id,
+        fn_name: "propose_upgrade",
+        args: (hash.clone(),).into_val(&e),
+        sub_invokes: &[],
+    };
+    e.mock_auths(&[MockAuth {
+        address: &wrong,
+        invoke: &auth,
+    }]);
+    assert!(c.try_propose_upgrade(&hash).is_err());
+    e.mock_auths(&[MockAuth {
+        address: &admin,
+        invoke: &auth,
+    }]);
+    c.propose_upgrade(&hash);
+    e.mock_auths(&[]);
+    e.ledger().with_mut(|l| l.timestamp = 59);
+    assert_eq!(c.try_execute_upgrade(), Err(Ok(Error::TimelockActive)));
+    let cancel = MockAuthInvoke {
+        contract: &id,
+        fn_name: "cancel_upgrade",
+        args: ().into_val(&e),
+        sub_invokes: &[],
+    };
+    e.mock_auths(&[MockAuth {
+        address: &wrong,
+        invoke: &cancel,
+    }]);
+    assert!(c.try_cancel_upgrade().is_err());
+    e.mock_auths(&[MockAuth {
+        address: &admin,
+        invoke: &cancel,
+    }]);
+    c.cancel_upgrade();
+    assert_eq!(c.try_execute_upgrade(), Err(Ok(Error::NothingPending)));
+    // A changed registry timelock applies to the next proposal.
+    e.mock_all_auths();
+    let r = vaeltrix_registry::RegistryClient::new(&e, &registry);
+    let mut p = r.params();
+    p.timelock_secs = 120;
+    let a = r.propose(&vaeltrix_registry::ActionKind::SetParams(p));
+    e.ledger().with_mut(|l| l.timestamp = 119);
+    r.execute(&a);
+    c.propose_upgrade(&hash);
+    e.mock_auths(&[]);
+    e.ledger().with_mut(|l| l.timestamp = 238);
+    assert_eq!(c.try_execute_upgrade(), Err(Ok(Error::TimelockActive)));
+    e.ledger().with_mut(|l| l.timestamp = 239);
+    c.execute_upgrade();
+    e.as_contract(&id, || {
+        assert_eq!(
+            e.storage()
+                .instance()
+                .get::<_, Option<(BytesN<32>, u64)>>(&DataKey::PendingUpgrade),
+            None
+        );
+    });
+}
 
 #[test]
-fn contract_registers() {
-    let env = Env::default();
-    let _contract_id = env.register(Bond, ());
+fn commit_happy_path_moves_tokens_and_emits_event() {
+    use soroban_sdk::{Vec, testutils::Events, token};
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let token = token::Client::new(e, &w.asset);
+    let before = token.balance(&w.owner);
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    let emitted = e.events().all();
+    assert_eq!(id, 1);
+    assert_eq!(token.balance(&w.owner), before - 2_000_000_000);
+    assert_eq!(token.balance(&w.id), 2_000_000_000);
+    let stored = c.commitment(&id);
+    assert_eq!(stored.template_version, 1);
+    assert_eq!(stored.min_stake, 1_000_000_000);
+    assert_eq!(c.available_stake(&id), 2_000_000_000);
+    assert_eq!(c.max_penalty(&id), 1_000_000_000);
+    assert_eq!(
+        c.commitments_by_provider(&w.provider),
+        Vec::from_array(e, [id])
+    );
+    let events = emitted;
+    let event = events.events().last().unwrap();
+    let soroban_sdk::xdr::ContractEventBody::V0(body) = &event.body;
+    assert_eq!(
+        body.topics[0],
+        soroban_sdk::xdr::ScVal::Symbol(soroban_sdk::xdr::ScSymbol(
+            std::vec::Vec::from(b"commit".as_slice())
+                .try_into()
+                .unwrap()
+        ))
+    );
 }
+#[test]
+fn commit_freezes_exit_cooldown_per_corrected_formula() {
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let id = c.commit(
+        &w.provider,
+        &901,
+        &w.asset,
+        &3_000_000_000,
+        &10_000_000_000,
+        &86_400,
+    );
+    let old = c.commitment(&id);
+    assert_eq!(old.exit_cooldown_secs, 606_130);
+    assert_eq!(old.min_stake, 1_500_000_000);
+    let r = vaeltrix_registry::RegistryClient::new(e, &w.registry);
+    let mut p = r.params();
+    p.exit_extra_secs = 9999;
+    p.stake_floor = 9_000_000_000;
+    let a = r.propose(&vaeltrix_registry::ActionKind::SetParams(p));
+    e.ledger().with_mut(|l| l.timestamp = 120);
+    r.execute(&a);
+    assert_eq!(c.commitment(&id), old);
+}
+#[test]
+fn add_stake_and_withdraw_excess_respect_min_stake_and_reserved() {
+    use soroban_sdk::token;
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    let initial = token::Client::new(e, &w.asset).balance(&w.owner);
+    c.add_stake(&id, &1_000_000_000);
+    assert_eq!(
+        token::Client::new(e, &w.asset).balance(&w.owner),
+        initial - 1_000_000_000
+    );
+    e.as_contract(&w.id, || {
+        let key = DataKey::Commitment(id);
+        let mut value: vaeltrix_types::Commitment = e.storage().persistent().get(&key).unwrap();
+        value.stake_reserved = 500_000_000;
+        e.storage().persistent().set(&key, &value);
+    });
+    assert_eq!(
+        c.try_withdraw_excess(&id, &1_500_000_001),
+        Err(Ok(Error::InsufficientStake))
+    );
+    c.withdraw_excess(&id, &1_500_000_000);
+    assert_eq!(c.available_stake(&id), 1_000_000_000);
+    assert_eq!(
+        token::Client::new(e, &w.asset).balance(&w.id),
+        1_500_000_000
+    );
+    assert_eq!(
+        token::Client::new(e, &w.asset).balance(&w.owner),
+        initial + 500_000_000
+    );
+    for amount in [0, -1] {
+        assert_eq!(c.try_add_stake(&id, &amount), Err(Ok(Error::InvalidParams)));
+        assert_eq!(
+            c.try_withdraw_excess(&id, &amount),
+            Err(Ok(Error::InvalidParams))
+        );
+    }
+}
+macro_rules! rejected_commit {
+    ($name:ident,$setup:expr,$amount:expr,$expected:expr) => {
+        #[test]
+        fn $name() {
+            let w = crate::testutils::StakeWorld::new();
+            let e = &w.env;
+            let r = vaeltrix_registry::RegistryClient::new(e, &w.registry);
+            ($setup)(&w, &r);
+            let c = BondClient::new(e, &w.id);
+            let before = soroban_sdk::token::Client::new(e, &w.asset).balance(&w.owner);
+            assert_eq!(
+                c.try_commit(&w.provider, &901, &w.asset, &$amount, &0, &0),
+                Err(Ok($expected))
+            );
+            assert_eq!(
+                soroban_sdk::token::Client::new(e, &w.asset).balance(&w.owner),
+                before
+            );
+            assert!(c.commitments_by_provider(&w.provider).is_empty());
+        }
+    };
+}
+rejected_commit!(
+    commit_rejects_unverified_provider,
+    |w: &crate::testutils::StakeWorld, r: &vaeltrix_registry::RegistryClient| r
+        .unverify_domain(&w.provider),
+    2_000_000_000,
+    Error::ProviderNotVerified
+);
+rejected_commit!(
+    commit_rejects_suspended_provider,
+    |w: &crate::testutils::StakeWorld, r: &vaeltrix_registry::RegistryClient| r
+        .suspend_provider(&w.provider, &soroban_sdk::Symbol::new(&w.env, "audit")),
+    2_000_000_000,
+    Error::ProviderNotActive
+);
+rejected_commit!(
+    commit_rejects_inactive_template,
+    |_: &crate::testutils::StakeWorld, r: &vaeltrix_registry::RegistryClient| r
+        .deprecate_template(&901, &1),
+    2_000_000_000,
+    Error::TemplateNotActive
+);
+rejected_commit!(
+    commit_rejects_below_min_stake,
+    |_: &crate::testutils::StakeWorld, _: &vaeltrix_registry::RegistryClient| {},
+    999_999_999,
+    Error::BelowMinStake
+);
+rejected_commit!(
+    commit_rejects_over_cap,
+    |_: &crate::testutils::StakeWorld, _: &vaeltrix_registry::RegistryClient| {},
+    100_000_000_001,
+    Error::StakeCapExceeded
+);
+#[test]
+fn commit_rejects_asset_mismatch() {
+    let w = crate::testutils::StakeWorld::new();
+    let c = BondClient::new(&w.env, &w.id);
+    assert_eq!(
+        c.try_commit(
+            &w.provider,
+            &901,
+            &Address::generate(&w.env),
+            &2_000_000_000,
+            &0,
+            &0
+        ),
+        Err(Ok(Error::AssetMismatch))
+    );
+}
+#[test]
+fn commit_rejects_below_max_penalty() {
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let r = vaeltrix_registry::RegistryClient::new(e, &w.registry);
+    let mut p = r.params();
+    p.stake_floor = 1;
+    let a = r.propose(&vaeltrix_registry::ActionKind::SetParams(p));
+    e.ledger().with_mut(|l| l.timestamp = 120);
+    r.execute(&a);
+    assert_eq!(
+        BondClient::new(e, &w.id).try_commit(&w.provider, &901, &w.asset, &999_999_999, &0, &0),
+        Err(Ok(Error::InsufficientStake))
+    );
+}
+
+#[test]
+fn stake_rejects_invalid_volume_overflow_and_unauthorized_owner() {
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    assert_eq!(
+        c.try_commit(&w.provider, &901, &w.asset, &2_000_000_000, &1, &0),
+        Err(Ok(Error::InvalidParams))
+    );
+    assert_eq!(
+        c.try_commit(&w.provider, &901, &w.asset, &2_000_000_000, &-1, &1),
+        Err(Ok(Error::InvalidParams))
+    );
+    assert_eq!(
+        c.try_commit(&w.provider, &901, &w.asset, &2_000_000_000, &i128::MAX, &1),
+        Err(Ok(Error::ArithmeticOverflow))
+    );
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    assert_eq!(
+        c.try_add_stake(&id, &100_000_000_000),
+        Err(Ok(Error::StakeCapExceeded))
+    );
+    assert_eq!(
+        c.try_add_stake(&id, &i128::MAX),
+        Err(Ok(Error::ArithmeticOverflow))
+    );
+    let stranger = Address::generate(e);
+    for name in ["add_stake", "withdraw_excess"] {
+        let args = (id, 1_i128).into_val(e);
+        e.mock_auths(&[MockAuth {
+            address: &stranger,
+            invoke: &MockAuthInvoke {
+                contract: &w.id,
+                fn_name: name,
+                args,
+                sub_invokes: &[],
+            },
+        }]);
+        assert!(
+            e.try_invoke_contract::<(), Error>(
+                &w.id,
+                &soroban_sdk::Symbol::new(e, name),
+                (id, 1_i128).into_val(e)
+            )
+            .is_err()
+        );
+    }
+    assert_eq!(c.commitment(&id).stake_total, 2_000_000_000);
+}
+
+#[test]
+fn pause_resume_coverage_windows() {
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    assert!(!c.is_covered(&id, &59_999));
+    assert!(c.is_covered(&id, &60_000));
+    e.ledger().with_mut(|l| l.timestamp = 70);
+    c.pause(&id);
+    assert!(c.is_covered(&id, &69_999));
+    assert!(!c.is_covered(&id, &70_000));
+    assert!(!c.is_covered(&id, &80_000));
+    assert_eq!(c.try_pause(&id), Err(Ok(Error::CommitmentNotActive)));
+    e.ledger().with_mut(|l| l.timestamp = 80);
+    c.resume(&id);
+    assert!(!c.is_covered(&id, &79_999));
+    assert!(c.is_covered(&id, &80_000));
+    assert!(c.is_covered(&id, &90_000));
+    assert_eq!(c.try_resume(&id), Err(Ok(Error::CommitmentNotActive)));
+    e.ledger().with_mut(|l| l.timestamp = 90);
+    c.pause(&id);
+    assert!(c.is_covered(&id, &75_000));
+    assert!(!c.is_covered(&id, &90_000));
+    e.ledger().with_mut(|l| l.timestamp = 100);
+    c.resume(&id);
+    assert!(!c.is_covered(&id, &99_999));
+    assert!(c.is_covered(&id, &100_000));
+    // Only the most recent pause is retained in V0 (D6).
+    assert!(c.is_covered(&id, &75_000));
+    e.as_contract(&w.id, || {
+        let mut v = crate::storage::commitment(e, id).unwrap();
+        v.effective_to = Some(120);
+        v.exit_requested_at = None;
+        crate::storage::put_commitment(e, &v);
+    });
+    assert!(c.is_covered(&id, &119_999));
+    assert!(!c.is_covered(&id, &120_000));
+    e.as_contract(&w.id, || {
+        let mut v = crate::storage::commitment(e, id).unwrap();
+        v.exit_requested_at = Some(110);
+        crate::storage::put_commitment(e, &v);
+    });
+    assert!(c.is_covered(&id, &109_999));
+    assert!(!c.is_covered(&id, &110_000));
+    assert!(!c.is_covered(&id, &120_000));
+}
+#[test]
+fn coverage_mutations_require_provider_admin() {
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    let wrong = Address::generate(e);
+    for (name, at) in [("pause", 70), ("resume", 80)] {
+        e.ledger().with_mut(|l| l.timestamp = at);
+        let invoke = MockAuthInvoke {
+            contract: &w.id,
+            fn_name: name,
+            args: (id,).into_val(e),
+            sub_invokes: &[],
+        };
+        e.mock_auths(&[MockAuth {
+            address: &wrong,
+            invoke: &invoke,
+        }]);
+        assert!(
+            e.try_invoke_contract::<(), Error>(
+                &w.id,
+                &soroban_sdk::Symbol::new(e, name),
+                (id,).into_val(e)
+            )
+            .is_err()
+        );
+        e.mock_auths(&[MockAuth {
+            address: &w.owner,
+            invoke: &invoke,
+        }]);
+        e.invoke_contract::<()>(&w.id, &soroban_sdk::Symbol::new(e, name), (id,).into_val(e));
+    }
+}
+
+fn exiting() -> (crate::testutils::StakeWorld, u64, u64) {
+    let w = crate::testutils::StakeWorld::new();
+    let c = BondClient::new(&w.env, &w.id);
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    w.env.ledger().with_mut(|l| l.timestamp = 70);
+    c.request_exit(&id);
+    let until = 70 + c.commitment(&id).exit_cooldown_secs;
+    (w, id, until)
+}
+#[test]
+fn exit_blocked_by_cooldown() {
+    let (w, id, until) = exiting();
+    w.env.ledger().with_mut(|l| l.timestamp = until - 1);
+    assert_eq!(
+        BondClient::new(&w.env, &w.id).try_finalize_exit(&id),
+        Err(Ok(Error::CooldownActive))
+    );
+    assert_eq!(
+        soroban_sdk::token::Client::new(&w.env, &w.asset).balance(&w.id),
+        2_000_000_000
+    );
+}
+#[test]
+fn exit_blocked_by_open_claim() {
+    let (w, id, until) = exiting();
+    let e = &w.env;
+    e.ledger().with_mut(|l| l.timestamp = until);
+    e.as_contract(&w.id, || {
+        let mut v = crate::storage::commitment(e, id).unwrap();
+        v.open_claims = 1;
+        v.stake_reserved = 100;
+        crate::storage::put_commitment(e, &v);
+    });
+    assert_eq!(
+        BondClient::new(e, &w.id).try_finalize_exit(&id),
+        Err(Ok(Error::OpenClaimsExist))
+    );
+    assert_eq!(
+        soroban_sdk::token::Client::new(e, &w.asset).balance(&w.id),
+        2_000_000_000
+    );
+}
+#[test]
+fn exit_returns_full_stake() {
+    let (w, id, until) = exiting();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let token = soroban_sdk::token::Client::new(e, &w.asset);
+    let before = token.balance(&w.owner);
+    assert!(c.is_covered(&id, &69_999));
+    assert!(!c.is_covered(&id, &70_000));
+    assert_eq!(c.try_request_exit(&id), Err(Ok(Error::CommitmentNotActive)));
+    assert_eq!(
+        c.try_add_stake(&id, &1),
+        Err(Ok(Error::CommitmentNotActive))
+    );
+    assert_eq!(
+        c.try_withdraw_excess(&id, &1),
+        Err(Ok(Error::CommitmentNotActive))
+    );
+    e.ledger().with_mut(|l| l.timestamp = until);
+    c.finalize_exit(&id);
+    assert_eq!(token.balance(&w.owner), before + 2_000_000_000);
+    assert_eq!(token.balance(&w.id), 0);
+    assert_eq!(c.commitment(&id).stake_total, 0);
+    assert_eq!(
+        c.commitment(&id).status,
+        vaeltrix_types::CommitmentStatus::Exited
+    );
+    assert_eq!(
+        c.try_finalize_exit(&id),
+        Err(Ok(Error::CommitmentNotActive))
+    );
+}
+#[test]
+fn exit_from_paused_requires_provider_admin() {
+    let w = crate::testutils::StakeWorld::new();
+    let e = &w.env;
+    let c = BondClient::new(e, &w.id);
+    let id = c.commit(&w.provider, &901, &w.asset, &2_000_000_000, &0, &0);
+    e.ledger().with_mut(|l| l.timestamp = 70);
+    c.pause(&id);
+    let wrong = Address::generate(e);
+    let args = (id,).into_val(e);
+    let auth = MockAuthInvoke {
+        contract: &w.id,
+        fn_name: "request_exit",
+        args,
+        sub_invokes: &[],
+    };
+    e.mock_auths(&[MockAuth {
+        address: &wrong,
+        invoke: &auth,
+    }]);
+    assert!(c.try_request_exit(&id).is_err());
+    e.mock_auths(&[MockAuth {
+        address: &w.owner,
+        invoke: &auth,
+    }]);
+    c.request_exit(&id);
+    let until = 70 + c.commitment(&id).exit_cooldown_secs;
+    e.ledger().with_mut(|l| l.timestamp = until);
+    let auth = MockAuthInvoke {
+        contract: &w.id,
+        fn_name: "finalize_exit",
+        args: (id,).into_val(e),
+        sub_invokes: &[],
+    };
+    e.mock_auths(&[MockAuth {
+        address: &wrong,
+        invoke: &auth,
+    }]);
+    assert!(c.try_finalize_exit(&id).is_err());
+    e.mock_auths(&[MockAuth {
+        address: &w.owner,
+        invoke: &auth,
+    }]);
+    c.finalize_exit(&id);
+}
+#[test]
+#[ignore = "VX-307 (#22) implements claim filing and resolution for exiting commitments"]
+fn claim_against_exiting_commitment_still_pays() {}
