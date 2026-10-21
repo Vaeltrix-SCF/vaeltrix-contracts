@@ -714,3 +714,251 @@ fn observers_are_bounded_deduplicated_and_reactivated_without_duplicate_list_ent
     assert_eq!(c.observers().len(), 32);
     assert!(c.is_active_observer(&addresses[0]));
 }
+
+// VX-205: assert the wire representation independently of the event structs.
+#[test]
+fn registry_event_catalogue_matches_wire_contract() {
+    use soroban_sdk::{BytesN, Map, String, Symbol, Val};
+    let env = Env::default();
+    env.mock_all_auths();
+    let (id, admin) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    let check = |topic: &str, key: Option<Val>, fields: &[(&str, Val)]| {
+        let mut topics = Vec::<Val>::new(&env);
+        topics.push_back(Symbol::new(&env, topic).into_val(&env));
+        if let Some(key) = key {
+            topics.push_back(key);
+        }
+        let mut data = Map::<Symbol, Val>::new(&env);
+        for (name, value) in fields {
+            data.set(Symbol::new(&env, name), *value);
+        }
+        assert_eq!(
+            Vec::from_array(&env, [wire_events(&env).last().unwrap()]),
+            Vec::from_array(&env, [(id.clone(), topics, data.into_val(&env))])
+        );
+    };
+    check("init", None, &[("admin", admin.into_val(&env))]);
+    let next = Address::generate(&env);
+    c.propose_admin(&next);
+    check(
+        "adm_prop",
+        None,
+        &[("address", next.clone().into_val(&env))],
+    );
+    c.accept_admin();
+    check("adm_set", None, &[("address", next.into_val(&env))]);
+    let owner = Address::generate(&env);
+    let p = register(&env, &id, &owner);
+    check(
+        "prov_reg",
+        Some(p.clone().into_val(&env)),
+        &[
+            ("admin", owner.into_val(&env)),
+            (
+                "home_domain",
+                String::from_str(&env, "anchor.example").into_val(&env),
+            ),
+        ],
+    );
+    let signers = Vec::from_array(&env, [BytesN::<32>::from_array(&env, &[8; 32])]);
+    c.update_signers(&p, &signers);
+    check(
+        "prov_sig",
+        Some(p.clone().into_val(&env)),
+        &[("new_value", signers.into_val(&env))],
+    );
+    let metadata = String::from_str(&env, "https://anchor.example/new.json");
+    c.update_metadata(&p, &metadata);
+    check(
+        "prov_meta",
+        Some(p.clone().into_val(&env)),
+        &[("new_value", metadata.into_val(&env))],
+    );
+    c.verify_domain(&p);
+    check("prov_ver", Some(p.clone().into_val(&env)), &[]);
+    c.unverify_domain(&p);
+    check("prov_unv", Some(p.clone().into_val(&env)), &[]);
+    let reason = Symbol::new(&env, "fraud");
+    c.suspend_provider(&p, &reason);
+    check(
+        "prov_sus",
+        Some(p.clone().into_val(&env)),
+        &[("reason", reason.into_val(&env))],
+    );
+    c.reinstate_provider(&p);
+    check("prov_rein", Some(p.into_val(&env)), &[]);
+    let t = template(&env, &id);
+    c.propose_template(&t);
+    check(
+        "tmpl_prop",
+        Some(901_u32.into_val(&env)),
+        &[
+            ("version", 1_u32.into_val(&env)),
+            ("activates_at", 60_u64.into_val(&env)),
+        ],
+    );
+    env.ledger().with_mut(|l| l.timestamp = 60);
+    c.activate_template(&901, &1);
+    check(
+        "tmpl_act",
+        Some(901_u32.into_val(&env)),
+        &[("version", 1_u32.into_val(&env))],
+    );
+    c.deprecate_template(&901, &1);
+    check(
+        "tmpl_dep",
+        Some(901_u32.into_val(&env)),
+        &[("version", 1_u32.into_val(&env))],
+    );
+    let mut t2 = t;
+    t2.version = 2;
+    c.propose_template(&t2);
+    c.cancel_template(&901, &2);
+    check(
+        "tmpl_canc",
+        Some(901_u32.into_val(&env)),
+        &[("version", 2_u32.into_val(&env))],
+    );
+    let observer = Address::generate(&env);
+    let key = BytesN::from_array(&env, &[9; 32]);
+    let action = c.propose(&ActionKind::AddObserver(observer.clone(), key.clone()));
+    check(
+        "act_prop",
+        Some(action.into_val(&env)),
+        &[
+            ("kind", 1_u32.into_val(&env)),
+            ("eta", 120_u64.into_val(&env)),
+        ],
+    );
+    env.ledger().with_mut(|l| l.timestamp = 120);
+    c.execute(&action);
+    let all = wire_events(&env);
+    assert_eq!(
+        Vec::from_array(&env, [all.get(all.len() - 2).unwrap()]),
+        Vec::from_array(
+            &env,
+            [(
+                id.clone(),
+                (Symbol::new(&env, "obs_add"), observer.clone()).into_val(&env),
+                soroban_sdk::map![&env, (Symbol::new(&env, "key"), key)].into_val(&env)
+            )]
+        )
+    );
+    check("act_exec", Some(action.into_val(&env)), &[]);
+    let remove = c.propose(&ActionKind::RemoveObserver(observer.clone()));
+    env.ledger().with_mut(|l| l.timestamp = 180);
+    c.execute(&remove);
+    let all = wire_events(&env);
+    assert_eq!(
+        Vec::from_array(&env, [all.get(all.len() - 2).unwrap()]),
+        Vec::from_array(
+            &env,
+            [(
+                id.clone(),
+                (Symbol::new(&env, "obs_rm"), observer).into_val(&env),
+                Map::<Symbol, Val>::new(&env).into_val(&env)
+            )]
+        )
+    );
+    let cancel = c.propose(&ActionKind::SetParams(c.params()));
+    c.cancel(&cancel);
+    check("act_canc", Some(cancel.into_val(&env)), &[]);
+}
+
+#[test]
+fn ttl_extended_on_touch() {
+    use soroban_sdk::{
+        BytesN,
+        testutils::storage::{Instance as _, Persistent as _},
+    };
+    use vaeltrix_types::{INSTANCE_BUMP, INSTANCE_THRESHOLD, PERSIST_BUMP, PERSIST_THRESHOLD};
+    let env = Env::default();
+    env.ledger()
+        .with_mut(|l| l.max_entry_ttl = PERSIST_BUMP + 100);
+    env.mock_all_auths();
+    let (id, _) = world(&env);
+    let c = RegistryClient::new(&env, &id);
+    let owner = Address::generate(&env);
+    let p = register(&env, &id, &owner);
+    c.propose_template(&template(&env, &id));
+    let observer = Address::generate(&env);
+    let action = c.propose(&ActionKind::AddObserver(
+        observer.clone(),
+        BytesN::from_array(&env, &[1; 32]),
+    ));
+    env.ledger().with_mut(|l| l.timestamp = 60);
+    c.execute(&action);
+    c.activate_template(&901, &1);
+    let keys = [
+        DataKey::Provider(p.clone()),
+        DataKey::ProviderByAdmin(owner.clone()),
+        DataKey::Template(901, 1),
+        DataKey::TemplateLatest(901),
+        DataKey::TemplateIds,
+        DataKey::Observer(observer.clone()),
+        DataKey::ObserverList,
+        DataKey::Action(action),
+    ];
+    env.as_contract(&id, || {
+        assert_eq!(env.storage().instance().get_ttl(), INSTANCE_BUMP);
+        for key in &keys {
+            assert_eq!(env.storage().persistent().get_ttl(key), PERSIST_BUMP);
+        }
+    });
+    // Refresh the instance while persistent entries age without being read.
+    let advance = PERSIST_BUMP - PERSIST_THRESHOLD + 1;
+    let mut elapsed = 0;
+    while elapsed < advance {
+        let step = (INSTANCE_BUMP - INSTANCE_THRESHOLD + 1).min(advance - elapsed);
+        env.ledger().with_mut(|l| l.sequence_number += step);
+        elapsed += step;
+        c.admin();
+    }
+    env.as_contract(&id, || {
+        for key in &keys {
+            assert!(env.storage().persistent().get_ttl(key) < PERSIST_THRESHOLD);
+        }
+    });
+    c.get_provider(&p);
+    c.providers_by_admin(&owner);
+    c.get_template_version(&901, &1);
+    c.get_template(&901);
+    c.template_ids();
+    c.is_active_observer(&observer);
+    c.observers();
+    c.action(&action);
+    env.as_contract(&id, || {
+        for key in &keys {
+            assert_eq!(env.storage().persistent().get_ttl(key), PERSIST_BUMP);
+        }
+    });
+    // Mutating entry points also renew the aged instance.
+    env.ledger()
+        .with_mut(|l| l.sequence_number += INSTANCE_BUMP - INSTANCE_THRESHOLD + 1);
+    c.update_metadata(&p, &soroban_sdk::String::from_str(&env, "updated"));
+    env.as_contract(&id, || {
+        assert_eq!(env.storage().instance().get_ttl(), INSTANCE_BUMP)
+    });
+}
+
+fn wire_events(env: &Env) -> Vec<(Address, Vec<soroban_sdk::Val>, soroban_sdk::Val)> {
+    use soroban_sdk::{TryFromVal, testutils::Events, xdr};
+    let mut result = Vec::new(env);
+    for event in env.events().all().events() {
+        let xdr::ContractEventBody::V0(body) = &event.body;
+        let address = Address::try_from_val(
+            env,
+            &xdr::ScVal::Address(xdr::ScAddress::Contract(event.contract_id.clone().unwrap())),
+        )
+        .unwrap();
+        let topics = Vec::<soroban_sdk::Val>::try_from_val(
+            env,
+            &xdr::ScVal::Vec(Some(body.topics.clone().into())),
+        )
+        .unwrap();
+        let data = soroban_sdk::Val::try_from_val(env, &body.data).unwrap();
+        result.push_back((address, topics, data));
+    }
+    result
+}
