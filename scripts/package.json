@@ -10,7 +10,7 @@
     "build": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^17.2.1",
+    "@stellar/stellar-sdk": "^17.3.0",
     "@vaeltrix/core": "workspace:*",
     "@vaeltrix/sdk": "workspace:*",
     "pg": "^8.23.1",
