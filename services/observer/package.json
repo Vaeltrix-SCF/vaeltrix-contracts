@@ -14,7 +14,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^17.2.1",
+    "@stellar/stellar-sdk": "^17.3.0",
     "@vaeltrix/core": "workspace:*",
     "fastify": "^5.12.7",
     "kysely": "^0.29.7",
