@@ -207,13 +207,13 @@ importers:
         version: 6.0.1
       '@stellar/stellar-sdk':
         specifier: 17.2.1
-        version: 17.2.1
+        version: 17.2.1(debug@4.4.3)
       react:
         specifier: 19.3.0
         version: 19.3.0
       react-dom:
-        specifier: 19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.0)
     devDependencies:
       '@types/react':
         specifier: ^19.2.0
@@ -247,7 +247,7 @@ importers:
     dependencies:
       '@stellar/stellar-sdk':
         specifier: ^17.2.1
-        version: 17.2.1
+        version: 17.2.1(debug@4.4.3)
       '@vaeltrix/core':
         specifier: workspace:*
         version: link:../core
@@ -256,7 +256,7 @@ importers:
     dependencies:
       '@stellar/stellar-sdk':
         specifier: ^17.2.1
-        version: 17.2.1
+        version: 17.2.1(debug@4.4.3)
       '@vaeltrix/core':
         specifier: workspace:*
         version: link:../packages/core
@@ -306,7 +306,7 @@ importers:
     dependencies:
       '@stellar/stellar-sdk':
         specifier: ^17.2.1
-        version: 17.2.1
+        version: 17.2.1(debug@4.4.3)
       '@vaeltrix/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -334,7 +334,7 @@ importers:
     dependencies:
       '@stellar/stellar-sdk':
         specifier: ^17.2.1
-        version: 17.2.1
+        version: 17.2.1(debug@4.4.3)
       '@vaeltrix/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
@@ -352,7 +352,7 @@ importers:
     dependencies:
       '@stellar/stellar-sdk':
         specifier: ^17.2.1
-        version: 17.2.1
+        version: 17.2.1(debug@4.4.3)
       '@vaeltrix/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -1531,10 +1531,10 @@ packages:
   quick-format-unescaped@4.0.4:
     resolution: {integrity: sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg==}
 
-  react-dom@19.3.0:
-    resolution: {integrity: sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==}
+  react-dom@19.3.1:
+    resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==}
     peerDependencies:
-      react: ^19.3.0
+      react: ^19.3.1
 
   react@19.3.0:
     resolution: {integrity: sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==}
@@ -2041,14 +2041,14 @@ snapshots:
 
   '@stellar/js-xdr@5.0.0': {}
 
-  '@stellar/stellar-sdk@17.2.1':
+  '@stellar/stellar-sdk@17.2.1(debug@4.4.3)':
     dependencies:
       '@exodus/bytes': 1.16.0(@noble/hashes@2.4.0)
       '@noble/ed25519': 3.2.0
       '@noble/hashes': 2.4.0
       '@stellar/js-xdr': 5.0.0
       '@types/json-schema': 7.0.15
-      axios: 1.20.0
+      axios: 1.20.0(debug@4.4.3)
       bignumber.js: 11.1.5
       commander: 14.0.3
       eventsource: 4.1.1
@@ -2240,9 +2240,9 @@ snapshots:
       '@fastify/error': 4.2.1
       fastq: 1.20.3
 
-  axios@1.20.0:
+  axios@1.20.0(debug@4.4.3):
     dependencies:
-      follow-redirects: 1.16.1
+      follow-redirects: 1.16.1(debug@4.4.3)
       form-data: 4.0.6
       https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
@@ -2520,7 +2520,9 @@ snapshots:
 
   flatted@3.4.4: {}
 
-  follow-redirects@1.16.1: {}
+  follow-redirects@1.16.1(debug@4.4.3):
+    optionalDependencies:
+      debug: 4.4.3
 
   form-data@4.0.6:
     dependencies:
@@ -2823,7 +2825,7 @@ snapshots:
 
   quick-format-unescaped@4.0.4: {}
 
-  react-dom@19.3.0(react@19.3.0):
+  react-dom@19.3.1(react@19.3.0):
     dependencies:
       react: 19.3.0
       scheduler: 0.28.0
