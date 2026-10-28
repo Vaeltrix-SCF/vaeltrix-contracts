@@ -1,49 +1,110 @@
 # Vaeltrix
 
-SLA-backed staking for Stellar payment providers. Providers stake USDC against a delivery-time SLA. When a payment completes late, or never, the client is paid a penalty from that stake automatically, and every outcome feeds a public reliability scoreboard.
+Vaeltrix is a protocol on Stellar where anchors and payment providers stake USDC against public payout-time guarantees. When a covered SEP-31 payout lands late, or never, the sender is paid a penalty from that stake automatically. Every outcome feeds a public reliability scoreboard per provider and corridor.
 
-This monorepo holds the three Soroban contracts plus the off-chain observer, indexer, API, SDK and mock anchor. One pull request can change a type and every consumer of it.
+- **Live on testnet:** three Soroban contracts, with 1,000 test USDC staked in commitment 1
+- **Playground:** https://vaeltrix-testnet.vercel.app
+- **Website:** https://www.vaeltrix.xyz
+- **Contract and transaction links:** [`test-net-deployment.md`](test-net-deployment.md)
+- **License:** Apache-2.0
 
-- **Build contract:** [`docs/implementation-guide.pdf`](docs/implementation-guide.pdf) (V0 Implementation Guide, 17 Oct 2026). It is the source of truth for every name, type, error code, event, storage key and API shape.
-- **Toolchain and integration notes:** [`docs/toolchain.md`](docs/toolchain.md). Read this first: the network is on Protocol 29 and several tools moved past what the guide pins.
-- **Agent rules:** [`AGENTS.md`](AGENTS.md)
+## Why it exists
 
-## Status
+Stellar settles a cross-border payment in seconds. The slow part is the receiving anchor's payout to a bank account or mobile money wallet, which happens offchain and can take minutes or a full day. SEP-31 lets an anchor publish a `status_eta`, but nothing holds it to that estimate, service terms live in private agreements, and stalled payments end up as support tickets.
 
-This repo is scaffolded, not implemented. VX-101 (monorepo scaffold) and VX-102 (CI) are done. Every other file is a compiling shell or stub that names the issue that fills it.
+Vaeltrix makes payout time measurable and enforceable:
 
-| Area | Path | First issue |
+1. A provider commits to a standard SLA template (for example, a 60-minute bank payout) and locks USDC stake in the bond contract.
+2. Each covered payment is timed from the ledger close of its Stellar transaction to the provider's signed completion event.
+3. If the payout breaches the target, a claim is filed, checked by an independent observer, and the penalty is paid from the provider's stake to the sender.
+4. Observers publish daily statistics with a Merkle root, so anyone can recompute every provider's on-time rate.
+
+## How it fits together
+
+```mermaid
+flowchart LR
+    Anchor["Provider / anchor<br/>(SEP-31 server)"]
+    Client["Sending client<br/>or wallet"]
+    Observer["Observer<br/>measures payments"]
+
+    subgraph Soroban["Stellar testnet: Soroban contracts"]
+        Registry["vaeltrix_registry<br/>providers, SLA templates,<br/>observers, governance"]
+        Bond["vaeltrix_bond<br/>USDC stake, coverage,<br/>exits, claims"]
+        Scoreboard["vaeltrix_scoreboard<br/>daily stats, Merkle roots,<br/>claim outcomes"]
+    end
+
+    Indexer["Indexer + REST API"]
+    Explorer["Playground / explorer"]
+
+    Anchor -- "register, verify domain (SEP-1)" --> Registry
+    Anchor -- "commit, add / withdraw stake,<br/>pause, resume, exit" --> Bond
+    Anchor -- "signed completion events" --> Observer
+    Client -- "covered payment<br/>(start time = ledger close)" --> Observer
+    Observer -- "file claim, attest" --> Bond
+    Observer -- "anchor_batch" --> Scoreboard
+    Bond -- "reads templates, providers" --> Registry
+    Bond -- "record_claim_outcome" --> Scoreboard
+    Bond -- "penalty in USDC" --> Client
+    Soroban -- "contract events" --> Indexer
+    Indexer --> Explorer
+```
+
+Funds only ever sit in `vaeltrix_bond`, and stake can only leave to a sender on an upheld claim or back to the provider after the exit cooldown. The registry and scoreboard hold no funds.
+
+## What is built
+
+| Part | Status | Details |
 | --- | --- | --- |
-| Shared types | `crates/vaeltrix-types` | VX-103 |
-| Verdict rules | `crates/vaeltrix-verdict` | VX-104 |
-| Test vectors | `test-vectors/` | VX-105 |
-| Off-chain core | `packages/core` | VX-106 |
-| Postgres and migrations | `db/`, `scripts/db.ts` | VX-107 |
-| Registry contract | `contracts/registry` | VX-201 |
-| Bond contract | `contracts/bond` | VX-301 |
-| Scoreboard contract | `contracts/scoreboard` | VX-401 |
-| Deploy and seed | `scripts/`, `config/`, `deployments/` | VX-501 to VX-506 |
-| Observer | `services/observer` | VX-601 |
-| Indexer and API | `services/indexer`, `services/api` | VX-701, VX-704 |
-| SDK and mock anchor | `packages/sdk`, `services/mock-anchor` | VX-801, VX-802 |
-| Demo | `scripts/demo/` | VX-901 |
+| `vaeltrix_registry` | Built, deployed, 26 tests | Provider registration bound to a home domain, signer rotation, domain verification by a separate verifier role, suspension. Versioned SLA templates that activate after a timelock. Observer set, parameters and upgrades change only through a timelocked governance queue, with observer and provider roles kept independent. Two-step admin handover. |
+| `vaeltrix_bond` | Built, deployed, 16 tests | `commit` checks the provider is active and verified, the asset matches the template, and stake covers both the minimum and the template's maximum penalty. Stake top-ups and excess withdrawals that never drop below minimum plus reserved stake. Pause and resume with time-aware coverage checks. Exit with a frozen cooldown, blocked while claims are open. Timelocked upgrades. |
+| `vaeltrix_scoreboard` | Built, deployed, 10 tests | `anchor_batch` accepts daily statistics only from active observers and rejects duplicates, future or misaligned periods and counts that do not add up. Lifetime totals per provider. `record_claim_outcome` callable only by the bond contract. |
+| `vaeltrix-types` | Built | Frozen data model, error codes, ID derivation, cross-contract client interfaces. |
+| `vaeltrix-verdict` | Built | Pure, overflow-safe SLA rules (on time, late, no completion, carve-out pauses, penalty, claim bond, minimum stake, exit cooldown), checked against test vectors shared with TypeScript. |
+| Playground | Live | Reads deployed state with no wallet. With Freighter on testnet: register a provider, commit stake, add or withdraw stake, pause and resume. |
+| Database and API foundation | Built | 14-table Postgres schema and a read-only Fastify API serving `/healthz` and `/v1/openapi.json`. |
+| Deploy and seed scripts | Built | Deploy registry, scoreboard and bond, wire them together, and seed template 901 with a demo provider and commitment. |
+| Claim functions in `vaeltrix_bond` | Next | File, challenge, attest, resolve, expire and pay out. The data model and error codes are already frozen. |
+| Observer, indexer, API endpoints, SDK, mock anchor | Next | Scaffolded with their module layout. |
+| Smoke test, domain verification script, demo scripts | Next | Wired in `package.json`, not implemented yet. |
 
-## Layout
+## Testnet deployment
+
+| Contract | ID |
+| --- | --- |
+| `vaeltrix_registry` | `CBBZQ577QYKADNBAYBYN56Q3ZDTDQYCBOGREHBFEVOWOI5F27TJBE6MO` |
+| `vaeltrix_bond` | `CCYLDMTA4CTFF2VHULUCCBNCBMN3G7MA33EZ2OFYMIRSIKX3PYUHCUAI` |
+| `vaeltrix_scoreboard` | `CD4TA5VDQUHF2LV5H5LWQSXRUSWTQYZN23MONYYUZQAJ5JBOEGYAP5EC` |
+| Test USDC | `CB2CFWENJ2M5JXWBGUOKO75QVIFJ2EY5WOIOHR6FFYTXAKGS2S3XOIM4` |
+
+Wasm hashes, deployment transactions and account roles are in [`deployments/testnet.json`](deployments/testnet.json). Explorer links for every contract and transaction are in [`test-net-deployment.md`](test-net-deployment.md).
+
+### Check it yourself
+
+No project keys are needed. With Stellar CLI 28.1.0:
+
+```sh
+stellar keys generate vx-reviewer --network testnet --fund
+
+stellar contract invoke --network testnet --source vx-reviewer --send no \
+  --id CCYLDMTA4CTFF2VHULUCCBNCBMN3G7MA33EZ2OFYMIRSIKX3PYUHCUAI \
+  -- available_stake --id 1
+```
+
+This returns `10000000000`, which is 1,000 test USDC at seven decimal places. Replace the last line with `-- commitment --id 1` to see the full commitment.
+
+## Repository layout
 
 ```
 .
-├── Cargo.toml                Rust workspace (crates/*, contracts/*)
-├── rust-toolchain.toml       Rust 1.97.0 + wasm32v1-none
-├── package.json              pnpm workspace root and every §3.4 script
-├── pnpm-workspace.yaml
-├── crates/
-│   ├── vaeltrix-types/       #[contracttype] structs, enums, Error, client traits
-│   └── vaeltrix-verdict/     pure no_std breach / penalty / bond rules
 ├── contracts/
 │   ├── registry/             vaeltrix_registry
 │   ├── bond/                 vaeltrix_bond
 │   └── scoreboard/           vaeltrix_scoreboard
-├── test-vectors/             shared by Rust and TypeScript suites
+├── crates/
+│   ├── vaeltrix-types/       shared structs, enums, errors, client traits
+│   └── vaeltrix-verdict/     pure SLA rules shared by contracts and observer
+├── test-vectors/             shared by the Rust and TypeScript suites
+├── apps/playground/          testnet explorer and wallet workspace
 ├── packages/
 │   ├── core/                 @vaeltrix/core
 │   ├── bindings/             generated contract clients (never hand-edit)
@@ -53,24 +114,24 @@ This repo is scaffolded, not implemented. VX-101 (monorepo scaffold) and VX-102 
 │   ├── indexer/              :4002
 │   ├── api/                  :4000
 │   └── mock-anchor/          :4100
-├── scripts/                  deploy, seed, smoke, bindings, demo, labels
-├── db/migrations/
-├── config/                   registry params per network
+├── scripts/                  deploy, seed, smoke, bindings, demo
+├── db/migrations/            Postgres schema
+├── config/                   registry parameters per network
 ├── deployments/              <network>.json written by deploy
-└── docs/
+└── docs/                     implementation guide, toolchain, testnet notes
 ```
 
 ## Prerequisites
 
 | Tool | Version | Install |
 | --- | --- | --- |
-| Rust | 1.97.0 | [rustup](https://rustup.rs). The toolchain file installs the version, the wasm target and components on first `cargo` run. |
+| Rust | 1.97.0 | [rustup](https://rustup.rs). The toolchain file installs the version, the `wasm32v1-none` target and components on first `cargo` run. |
 | Stellar CLI | 28.1.0 | `cargo install --locked stellar-cli --version 28.1.0`, or a release binary |
 | Node.js | 24 LTS | `nvm use` reads `.nvmrc` |
-| pnpm | 12.14.0 | `npm install -g pnpm@12`. Corepack cannot install pnpm 11+. |
-| Docker | any recent | for Postgres once VX-107 lands |
+| pnpm | 12.14.0 | `npm install -g pnpm@12` |
+| Docker | any recent | for Postgres |
 
-On Windows, use Git Bash or WSL for the `.sh` scripts.
+The repository targets Stellar Protocol 29 with `soroban-sdk` 29.0.1. See [`docs/toolchain.md`](docs/toolchain.md) for why each version is pinned.
 
 ## Quickstart
 
@@ -78,32 +139,41 @@ On Windows, use Git Bash or WSL for the `.sh` scripts.
 pnpm install
 
 # Contracts
-pnpm contracts:lint      # fmt --check + clippy -D warnings
+pnpm contracts:lint      # cargo fmt --check + clippy -D warnings
 pnpm contracts:test      # cargo test --workspace
-pnpm contracts:build     # stellar contract build -> target/wasm32v1-none/release/vaeltrix_*.wasm
+pnpm contracts:build     # stellar contract build
 
 # TypeScript
-pnpm build               # every package and service
+pnpm build
 pnpm typecheck
 pnpm lint
-pnpm test                # Vitest across packages and services
-pnpm test:vectors        # Rust + TS vector suites, same as the CI vectors job
+pnpm test
+pnpm test:vectors        # Rust and TypeScript vector suites
+
+# Testnet
+pnpm deploy:testnet      # deploy and wire the three contracts
+pnpm seed:testnet        # template 901, demo provider and commitment
+
+# Playground
+pnpm --filter @vaeltrix/playground dev
 ```
 
-Testnet scripts (`deploy:testnet`, `seed:testnet`, `bindings`, `demo:breach`, …) are wired in `package.json` but exit with "not implemented (VX-xxx)" until their issue lands.
+## Documentation
 
-## Conventions (guide §0.2, §17)
+- [`docs/implementation-guide.pdf`](docs/implementation-guide.pdf): the build contract, the source of truth for every name, type, error code, event and API shape
+- [`docs/toolchain.md`](docs/toolchain.md): pinned versions and protocol changes
+- [`docs/testnet-deployment.md`](docs/testnet-deployment.md), [`docs/testnet-seeding.md`](docs/testnet-seeding.md), [`docs/testnet-accounts.md`](docs/testnet-accounts.md): running and using the testnet deployment
+- [`apps/playground/README.md`](apps/playground/README.md): playground walkthrough for testers
 
-- **Money and time are integers:** `i128` / `u64` in Rust, `bigint` in TypeScript. Amounts are in the asset's smallest unit (1 USDC = `10_000_000`).
-- **Error handling:** no `unwrap`, `expect` or `panic!` in contract code. The workspace lints deny them, and tests are exempt via `clippy.toml`.
-- **Branches and commits:** branches are `type/short-description`. Commit titles are conventional (`feat(bond): resolve upheld claims`). Pull requests are squash-merged.
-- **Pull requests:** one issue per PR, using `.github/pull_request_template.md`. An interface change updates the guide in the same PR.
-- **Done means:**
-  - `cargo clippy -- -D warnings` and `tsc --noEmit` are clean.
-  - The issue's named tests exist and pass in CI.
+## Engineering conventions
 
-## GitHub setup
+- **Money and time are integers:** `i128` and `u64` in Rust, `bigint` in TypeScript. Amounts are in the asset's smallest unit (1 USDC = `10_000_000`).
+- **No panics in contracts:** `unwrap`, `expect` and `panic!` are denied by workspace lints outside tests, and arithmetic uses `checked_*` with explicit overflow errors.
+- **Frozen interfaces:** function names, argument order, struct fields, error codes and event topics follow the implementation guide. Changing one updates the guide in the same pull request.
+- **Test-first contracts:** each issue's named tests are written before the implementation.
+- **CI on every pull request:** formatting, clippy with warnings denied, the full Rust and TypeScript test suites, contract builds with Wasm checks, and the cross-language vector suites.
+- **Branches and commits:** `type/short-description` branches, conventional commit titles, one issue per pull request, squash-merged.
 
-1. Push the repo, then run `scripts/labels.sh` (needs the authenticated `gh` CLI) to create the §16.1 labels.
-2. Protect `main`, requiring the `rust`, `ts` and `vectors` checks.
-3. Open issues from the §16 backlog using the **VX task** template. VX-904 automates bulk creation.
+## License
+
+Apache-2.0
