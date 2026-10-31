@@ -313,21 +313,19 @@ Carve-outs pause the clock. Each must be declared in real time with a signed rea
 
 ### 6.6 Signed event format — Planned
 
-Planned schema, not a recorded payment. Fields below describe their encoding; no payment hash or signature is asserted.
+Planned schema, not a recorded payment. The field table describes the encoding without inventing a payment or signature.
 
-```json
-{
-  "v": 1,
-  "event": "receiver_credit_confirmed",
-  "payment_id": "SHA-256 payment identifier (32 bytes, hex)",
-  "sep31_tx_id": "82fhs729f63dh0v4",
-  "provider_id": "6e25c94ba9c8b56d37622018e3d748adc3733a96aa90e46dcd6a794044da16e9",
-  "commitment_id": 1,
-  "ts": "2026-10-11T14:03:22.418Z",
-  "rail_ref": "NIP-000013261011140322",
-  "sig": "ed25519 signature (64 bytes)"
-}
-```
+| Field | Encoding / meaning |
+| --- | --- |
+| `v` | Schema version 1 |
+| `event` | `receiver_credit_confirmed` |
+| `payment_id` | Full 32-byte SHA-256 identifier, hex encoded; derived using §5.6 |
+| `sep31_tx_id` | Actual SEP-31 transaction identifier |
+| `provider_id` | Full registered 32-byte provider identifier, hex encoded |
+| `commitment_id` | Existing commitment identifier |
+| `ts` | RFC 3339 completion timestamp |
+| `rail_ref` | Actual payout-rail reference |
+| `sig` | Full ed25519 signature over the canonical signed document |
 
 `rail_ref` carries the payout rail's own reference, such as a NIBSS NIP session ID, so a dispute can be checked against a third-party record.
 
@@ -527,10 +525,10 @@ A claim that fails validation at filing reverts and never enters this machine.
 `file_claim` reverts unless:
 
 1. The commitment covered the payment at t0 (`is_covered`).
-2. Amount, asset and corridor fall inside the template scope.
-3. `now <= t0 + target_ms + grace_ms + pause_ms + claim_window_secs`.
+2. Amount and asset meet the checks possible onchain; the observer verifies corridor and other offchain scope under guide §2 D2.
+3. `now_ms <= t0_ms + target_ms + grace_ms + pause_ms + claim_window_secs × 1000`.
 4. No claim already exists for this `payment_id`.
-5. The evidence hashes to `payment.evidence_hash` and includes the ledger transaction for t0.
+5. The observer verifies the evidence bundle and historical ledger transaction for t0 offchain. The contract stores the evidence hash; it cannot fetch that transaction or evidence bundle (guide §2 D2).
 6. The breach condition (section 6.2) holds on the submitted timestamps.
 7. The claimant transfers the claim bond.
 8. The penalty is moved from available stake to `stake_reserved`. If stake cannot cover it in full, the uncovered part is recorded as `shortfall`.
@@ -581,22 +579,20 @@ The registry already bounds the set at 32 observers, enforces independence from 
 
 ### 11.3 Attestation format — Planned
 
-Planned schema, not a recorded claim. Fields below describe their encoding; no attestation or signature is asserted.
+Planned schema, not a recorded claim. The field table describes the encoding without inventing an attestation or signature.
 
-```json
-{
-  "v": 1,
-  "claim_id": 1187,
-  "payment_id": "SHA-256 payment identifier (32 bytes, hex)",
-  "evidence_hash": "SHA-256 evidence identifier (32 bytes, hex)",
-  "computed_latency_ms": 5512000,
-  "carve_outs_applied": [],
-  "verdict": "uphold",
-  "observer": "GBMQHKORPRE7RJR2FUSQZGJLFSSEBSOX4EZHO3N2R4ZRXCQZJ7ZUV35R",
-  "observed_at": "2026-10-11T16:12:00Z",
-  "sig": "ed25519 signature (64 bytes)"
-}
-```
+| Field | Encoding / meaning |
+| --- | --- |
+| `v` | Schema version 1 |
+| `claim_id` | Existing claim identifier |
+| `payment_id` | Full 32-byte SHA-256 payment identifier, hex encoded |
+| `evidence_hash` | Full 32-byte SHA-256 canonical evidence hash, hex encoded |
+| `computed_latency_ms` | Integer measured latency in milliseconds |
+| `carve_outs_applied` | Applied carve-out records |
+| `verdict` | Observer's computed uphold/reject decision |
+| `observer` | Registered observer public address |
+| `observed_at` | RFC 3339 observation timestamp |
+| `sig` | Full ed25519 signature over the canonical signed document |
 
 The planned onchain `attest` call carries the observer, claim ID, verdict and `attestation_hash`; `observer.require_auth()` supplies authorization (implementation guide §2 D9). The full document goes to the observer's public log.
 
