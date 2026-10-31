@@ -56,7 +56,7 @@ Funds only ever sit in `vaeltrix_bond`, and stake can only leave to a sender on 
 | Part | Status | Details |
 | --- | --- | --- |
 | `vaeltrix_registry` | Built, deployed, 26 tests | Provider registration bound to a home domain, signer rotation, domain verification by a separate verifier role, suspension. Versioned SLA templates that activate after a timelock. Observer set, parameters and upgrades change only through a timelocked governance queue, with observer and provider roles kept independent. Two-step admin handover. |
-| `vaeltrix_bond` | Built, deployed, 16 tests | `commit` checks the provider is active and verified, the asset matches the template, and stake covers both the minimum and the template's maximum penalty. Stake top-ups and excess withdrawals that never drop below minimum plus reserved stake. Pause and resume with time-aware coverage checks. Exit with a frozen cooldown, blocked while claims are open. Timelocked upgrades. |
+| `vaeltrix_bond` | Built, deployed, 19 passing tests, 1 ignored | `commit` checks the provider is active and verified, the asset matches the template, and stake covers both the minimum and the template's maximum penalty. Stake top-ups and excess withdrawals that never drop below minimum plus reserved stake. Pause and resume with time-aware coverage checks. Exit with a frozen cooldown, blocked while claims are open. Timelocked upgrades. |
 | `vaeltrix_scoreboard` | Built, deployed, 10 tests | `anchor_batch` accepts daily statistics only from active observers and rejects duplicates, future or misaligned periods and counts that do not add up. Lifetime totals per provider. `record_claim_outcome` callable only by the bond contract. |
 | `vaeltrix-types` | Built | Frozen data model, error codes, ID derivation, cross-contract client interfaces. |
 | `vaeltrix-verdict` | Built | Pure, overflow-safe SLA rules (on time, late, no completion, carve-out pauses, penalty, claim bond, minimum stake, exit cooldown), checked against test vectors shared with TypeScript. |
@@ -159,6 +159,8 @@ pnpm --filter @vaeltrix/playground dev
 ```
 
 ## Documentation
+
+Start with the [development documentation index](docs/README.md).
 
 - [`docs/implementation-guide.pdf`](docs/implementation-guide.pdf): the build contract, the source of truth for every name, type, error code, event and API shape
 - [`docs/toolchain.md`](docs/toolchain.md): pinned versions and protocol changes
