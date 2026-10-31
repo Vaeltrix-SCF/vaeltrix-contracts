@@ -393,7 +393,7 @@ Observer independence is checked twice: when the action is proposed and again wh
 | `__constructor(admin, registry, scoreboard)` | Deployer | Initialises counters |
 | `commit(provider_id, template_id, stake_asset, amount, max_volume_per_period, period_secs)` | Provider admin | Provider must be active and verified; asset must match the template and be allowed; stake must meet `min_stake`, cover the template's maximum penalty and stay under the stake cap; freezes the exit cooldown; transfers USDC in |
 | `add_stake`, `withdraw_excess` | Provider admin | Withdrawals can never take `stake_total - stake_reserved` below `min_stake` |
-| `pause`, `resume` | Provider admin | Records pause and resume times; claims continue while paused |
+| `pause`, `resume` | Provider admin | Records pause and resume times; planned claims remain eligible while paused |
 | `is_covered(commitment_id, t0_ms)` | Anyone | True if the commitment covered a payment at that moment, given pause, resume, exit and effective dates |
 | `available_stake`, `max_penalty`, `commitment`, `commitments_by_provider` | Anyone | Views |
 | `request_exit`, `finalize_exit` | Provider admin | Exit only after the frozen cooldown and with no open claims; returns all stake |
@@ -542,7 +542,7 @@ A claim that fails validation at filing reverts and never enters this machine.
 | Claim window | 7 or 14 days, per template | 10 minutes (template 901) | Breach deadline |
 | Challenge window | 48 hours | 180 seconds | Filing |
 | Attestation window | 72 hours | 300 seconds | Challenge |
-| Exit cooldown | Frozen formula in §8.6, with deployment parameters | 606,130 seconds for seeded commitment 1 | Exit request |
+| Exit cooldown | Frozen formula in §8.2, with deployment parameters | 606,130 seconds for seeded commitment 1 | Exit request |
 
 ### 10.3 Resolution
 
