@@ -22,17 +22,27 @@ Historical user-supplied capture from 21 October 2026, preserved without edited 
 
 Registration uses the connected wallet as admin and receipt signer. Publish the matching `stellar.toml` and request operator verification before committing stake. Never include seeds or private keys in documentation or screenshots.
 
+## Registration review and confirmation
+
+![Provider registration review on Testnet](images/playground-registration-review.png)
+
+The real simulation prepares registration of `vaeltrix.xyz` with the connected wallet as admin. The user reviews network, signer and maximum test XLM fee before signing.
+
+![Confirmed provider registration](images/playground-provider-registered.png)
+
+Registration succeeded, but domain verification is pending. This capture does not claim that the provider is verified or able to stake yet. The website operator must publish matching `stellar.toml` before verification.
+
 ## Commit stake: simulation and review
 
 The implemented flow is: select a verified provider and template, enter test USDC, simulate, review signer/amount/network/fee/expiry, then explicitly sign in Freighter. A rejection must remain unsigned. See the [UI implementation](../apps/playground/src/main.tsx) and [transaction checks](../apps/playground/src/chain.ts).
 
-A live connected-wallet capture of the commitment simulation/review is still required before this page satisfies the full prototype evidence checklist. No mock wallet state or fabricated transaction is substituted for it.
+Connected-wallet commitment simulation/review screenshots are deferred to [issue #95](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/issues/95). No mock wallet state or fabricated transaction is substituted for them.
 
 ## Your commitments: manage stake and coverage
 
 After confirmation, the owner's commitments expose add stake, withdraw excess, pause and resume. Each action requires a fresh simulation and review. Another wallet cannot operate seeded commitment 1. The frozen exit cooldown is displayed, but exit transactions are outside this UI.
 
-A live owner-wallet capture of these controls is still required. Historical [commit/pause/resume transaction evidence](../test-net-deployment.md#onchain-activity) establishes those recorded operations, not screenshot coverage of every control or completed add/withdraw actions.
+Live owner-wallet captures of these controls are deferred to [issue #95](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/issues/95). Historical [commit/pause/resume transaction evidence](../test-net-deployment.md#onchain-activity) establishes those recorded operations, not screenshot coverage of every control or completed add/withdraw actions.
 
 ## Planned screens
 
