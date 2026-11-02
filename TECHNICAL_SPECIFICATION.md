@@ -2,6 +2,8 @@
 
 Vaeltrix is an open Soroban protocol that lets Stellar payment providers stake USDC against public, machine-readable payout-time agreements, and pays the sender automatically when a covered SEP-31 payout breaches its agreement. Every outcome feeds a public reliability scoreboard per provider, corridor and asset.
 
+Only the foundation is deployed: registry, commitments/stake/coverage/exits, and scoreboard storage. Claims, payouts, the observer, indexing, reliability scores and payment tagging remain planned. Unlabelled protocol descriptions below describe intended behaviour, not evidence of deployed features.
+
 This document describes the protocol as built in [`Vaeltrix-SCF/vaeltrix-contracts`](https://github.com/Vaeltrix-SCF/vaeltrix-contracts) and the parts still to come. Each section marks its status:
 
 - **Built**: implemented, tested and deployed on Stellar testnet
@@ -18,7 +20,7 @@ This document describes the protocol as built in [`Vaeltrix-SCF/vaeltrix-contrac
 7. [SLA templates and penalties](#7-sla-templates-and-penalties)
 8. [Contract specifications](#8-contract-specifications)
 9. [Protocol flows](#9-protocol-flows)
-10. [Claims and dispute resolution](#10-claims-and-dispute-resolution)
+10. [Claims and dispute resolution](#10-claims-and-dispute-resolution--planned)
 11. [Observers](#11-observers)
 12. [Scoreboard and metrics](#12-scoreboard-and-metrics)
 13. [Economics](#13-economics)
@@ -197,7 +199,7 @@ pub struct Commitment {
 }
 ```
 
-Available stake is `stake_total - stake_reserved`. A provider may only tag a new payment if available stake covers that payment's maximum penalty, so every covered payment is fully collateralised when it is tagged.
+Available stake is `stake_total - stake_reserved`. A provider may only tag a new payment if available stake covers that payment's maximum penalty, as a point-in-time admission check. Tagging is planned offchain; it does not reserve stake, and concurrent claims can produce shortfall (implementation guide §2 D5).
 
 ### 5.4 Payment reference — Built (type), Planned (use)
 
@@ -311,19 +313,19 @@ Carve-outs pause the clock. Each must be declared in real time with a signed rea
 
 ### 6.6 Signed event format — Planned
 
-```json
-{
-  "v": 1,
-  "event": "receiver_credit_confirmed",
-  "payment_id": "b3f1...9a",
-  "sep31_tx_id": "82fhs729f63dh0v4",
-  "provider_id": "7c2e...41",
-  "commitment_id": 42,
-  "ts": "2026-10-11T14:03:22.418Z",
-  "rail_ref": "NIP-000013261011140322",
-  "sig": "ed25519:..."
-}
-```
+Planned schema, not a recorded payment. The field table describes the encoding without inventing a payment or signature.
+
+| Field | Encoding / meaning |
+| --- | --- |
+| `v` | Schema version 1 |
+| `event` | `receiver_credit_confirmed` |
+| `payment_id` | Full 32-byte SHA-256 identifier, hex encoded; derived using §5.6 |
+| `sep31_tx_id` | Actual SEP-31 transaction identifier |
+| `provider_id` | Full registered 32-byte provider identifier, hex encoded |
+| `commitment_id` | Existing commitment identifier |
+| `ts` | RFC 3339 completion timestamp |
+| `rail_ref` | Actual payout-rail reference |
+| `sig` | Full ed25519 signature over the canonical signed document |
 
 `rail_ref` carries the payout rail's own reference, such as a NIBSS NIP session ID, so a dispute can be checked against a third-party record.
 
@@ -382,14 +384,14 @@ All three contracts are written for Soroban SDK 29 on Stellar Protocol 29. Contr
 
 Observer independence is checked twice: when the action is proposed and again when it executes, because a provider could register during the timelock. Removed observers keep their record so historical attribution survives.
 
-### 8.2 `vaeltrix_bond` — Built (commitments, stake, coverage, exits), Planned (claims), 16 tests
+### 8.2 `vaeltrix_bond` — Built (commitments, stake, coverage, exits), Planned (claims), 19 passing tests, 1 ignored
 
 | Function | Who | Behaviour |
 | --- | --- | --- |
 | `__constructor(admin, registry, scoreboard)` | Deployer | Initialises counters |
 | `commit(provider_id, template_id, stake_asset, amount, max_volume_per_period, period_secs)` | Provider admin | Provider must be active and verified; asset must match the template and be allowed; stake must meet `min_stake`, cover the template's maximum penalty and stay under the stake cap; freezes the exit cooldown; transfers USDC in |
 | `add_stake`, `withdraw_excess` | Provider admin | Withdrawals can never take `stake_total - stake_reserved` below `min_stake` |
-| `pause`, `resume` | Provider admin | Records pause and resume times; claims continue while paused |
+| `pause`, `resume` | Provider admin | Records pause and resume times; planned claims remain eligible while paused |
 | `is_covered(commitment_id, t0_ms)` | Anyone | True if the commitment covered a payment at that moment, given pause, resume, exit and effective dates |
 | `available_stake`, `max_penalty`, `commitment`, `commitments_by_provider` | Anyone | Views |
 | `request_exit`, `finalize_exit` | Provider admin | Exit only after the frozen cooldown and with no open claims; returns all stake |
@@ -401,7 +403,7 @@ Invariants:
 1. `stake_reserved <= stake_total` at all times.
 2. A claim reserves its penalty on filing. Resolution either pays it out (upheld) or releases it (rejected or expired).
 3. `finalize_exit` fails while any claim is open or before `exit_requested_at + exit_cooldown_secs`.
-4. `exit_cooldown_secs >= claim window + challenge window + attestation window + extra`, computed per template at commit time.
+4. `exit_cooldown_secs = max(claim window + challenge window + attestation window, 604800) + target seconds + grace seconds + maximum hold seconds + extra`, computed per template at commit time. Template 901 freezes 606,130 seconds; the seven-day floor applies on testnet too.
 5. One claim per `payment_id`.
 6. Stake leaves the contract only to a beneficiary (upheld claim), to the provider (exit or excess withdrawal) or to the claimant (bond refund).
 
@@ -523,10 +525,10 @@ A claim that fails validation at filing reverts and never enters this machine.
 `file_claim` reverts unless:
 
 1. The commitment covered the payment at t0 (`is_covered`).
-2. Amount, asset and corridor fall inside the template scope.
-3. `now <= t0 + target_ms + grace_ms + pause_ms + claim_window_secs`.
+2. Amount and asset meet the checks possible onchain; the observer verifies corridor and other offchain scope under guide §2 D2.
+3. `now_ms <= t0_ms + target_ms + grace_ms + pause_ms + claim_window_secs × 1000`.
 4. No claim already exists for this `payment_id`.
-5. The evidence hashes to `payment.evidence_hash` and includes the ledger transaction for t0.
+5. The observer verifies the evidence bundle and historical ledger transaction for t0 offchain. The contract stores the evidence hash; it cannot fetch that transaction or evidence bundle (guide §2 D2).
 6. The breach condition (section 6.2) holds on the submitted timestamps.
 7. The claimant transfers the claim bond.
 8. The penalty is moved from available stake to `stake_reserved`. If stake cannot cover it in full, the uncovered part is recorded as `shortfall`.
@@ -538,7 +540,7 @@ A claim that fails validation at filing reverts and never enters this machine.
 | Claim window | 7 or 14 days, per template | 10 minutes (template 901) | Breach deadline |
 | Challenge window | 48 hours | 180 seconds | Filing |
 | Attestation window | 72 hours | 300 seconds | Challenge |
-| Exit cooldown | Sum of the above plus 7 days | Sum of the above plus 120 seconds | Exit request |
+| Exit cooldown | Frozen formula in §8.2, with deployment parameters | 606,130 seconds for seeded commitment 1 | Exit request |
 
 ### 10.3 Resolution
 
@@ -577,22 +579,22 @@ The registry already bounds the set at 32 observers, enforces independence from 
 
 ### 11.3 Attestation format — Planned
 
-```json
-{
-  "v": 1,
-  "claim_id": 1187,
-  "payment_id": "b3f1...9a",
-  "evidence_hash": "e91c...07",
-  "computed_latency_ms": 5512000,
-  "carve_outs_applied": [],
-  "verdict": "uphold",
-  "observer": "GOBS...",
-  "observed_at": "2026-10-11T16:12:00Z",
-  "sig": "ed25519:..."
-}
-```
+Planned schema, not a recorded claim. The field table describes the encoding without inventing an attestation or signature.
 
-The onchain `attest` call carries only the claim ID, the verdict and a signature over this document's canonical hash. The full document goes to the observer's public log.
+| Field | Encoding / meaning |
+| --- | --- |
+| `v` | Schema version 1 |
+| `claim_id` | Existing claim identifier |
+| `payment_id` | Full 32-byte SHA-256 payment identifier, hex encoded |
+| `evidence_hash` | Full 32-byte SHA-256 canonical evidence hash, hex encoded |
+| `computed_latency_ms` | Integer measured latency in milliseconds |
+| `carve_outs_applied` | Applied carve-out records |
+| `verdict` | Observer's computed uphold/reject decision |
+| `observer` | Registered observer public address |
+| `observed_at` | RFC 3339 observation timestamp |
+| `sig` | Full ed25519 signature over the canonical signed document |
+
+The planned onchain `attest` call carries the observer, claim ID, verdict and `attestation_hash`; `observer.require_auth()` supplies authorization (implementation guide §2 D9). The full document goes to the observer's public log.
 
 ### 11.4 Accountability
 
@@ -603,7 +605,7 @@ The onchain `attest` call carries only the claim ID, the verdict and a signature
 
 ## 12. Scoreboard and metrics
 
-### 12.1 Published metrics
+### 12.1 Published metrics — Planned aggregation and explorer
 
 | Metric | Source | Notes |
 | --- | --- | --- |
@@ -616,11 +618,11 @@ The onchain `attest` call carries only the claim ID, the verdict and a signature
 | Claim outcomes | Scoreboard lifetime totals | Upheld, rejected, expired |
 | Stake at risk, coverage ratio | Bond storage | Live |
 
-### 12.2 Verifiable aggregates
+### 12.2 Verifiable aggregates — Planned publisher
 
 Percentiles are too expensive to compute onchain. Each day the observer publishes a Merkle root over every payment record (`payment_id`, amount, t0, t1, carve-out, breach), sorted by `payment_id`, together with the signed `PeriodStats`. Anyone can download the records, recompute the statistics, check the root and report a mismatch. In V1 a day is final only when a quorum of observers posts matching roots.
 
-### 12.3 Reliability score
+### 12.3 Reliability score — Planned
 
 The explorer derives one headline number per commitment, published as a separate versioned formula so it can change without touching contracts:
 
@@ -684,7 +686,7 @@ The highest risks are falsified timestamps and observer collusion; contract bugs
 | T9 | Carve-out abuse | Carve-out rate published; template cap on holds | V0 |
 | T10 | Signing key compromise | Multiple registered signers, rotation, suspicious-pattern alerts | V0, rotation built |
 | T11 | Contract bug drains stake | Invariant and property tests, stake caps during pilots, timelocked upgrades, audit before mainnet | Pre-mainnet |
-| T12 | Governance capture | Governance cannot move stake; timelock longer than the exit cooldown | V0, built |
+| T12 | Governance capture | Governance cannot move stake; production timelock must exceed the exit cooldown. Testnet uses a 60-second timelock for demonstrations and does not meet that production timing condition | V0 foundation; production timing planned |
 | T13 | State archival removes an open claim | Persistent storage with TTL extension on every touch | V0, built |
 
 **Residual risk in V0:** with a single reference observer, collusion is limited only by transparency and the testnet-only scope. Until payout rails sign directly, a provider willing to commit signed fraud can misreport, but the fraud is permanent and attributable.
@@ -697,12 +699,14 @@ Vaeltrix needs no change to SEP-31. It uses existing discovery, authentication a
 
 ### 15.1 SEP-1 (`stellar.toml`)
 
+The block for the seeded testnet provider would read as follows; the signing key is the provider's registered ed25519 key in Stellar G-address form.
+
 ```toml
 [VAELTRIX]
-PROVIDER_ID = "7c2e...41"
+PROVIDER_ID = "6e25c94ba9c8b56d37622018e3d748adc3733a96aa90e46dcd6a794044da16e9"
 REGISTRY_CONTRACT = "CBBZQ577QYKADNBAYBYN56Q3ZDTDQYCBOGREHBFEVOWOI5F27TJBE6MO"
-COMMITMENTS = [42, 57]
-EVENT_SIGNING_KEYS = ["GSIGN1...", "GSIGN2..."]
+COMMITMENTS = [1]
+EVENT_SIGNING_KEYS = ["GAXN3KJT36RUDCOFGVUIUAD6IXWHGC5X3RIZQPV6A222GL4YZEYDG5UT"]
 ```
 
 The verifier checks this block against the registry before calling `verify_domain`.
@@ -717,6 +721,8 @@ The verifier checks this block against the registry before calling `verify_domai
 | `stellar_transaction_id` | Links the settlement to the payment and gives t0 |
 | Status transitions | Polled as a cross-check; `pending_customer_info_update` and `error` map to carve-outs |
 | `completed_at` | Must equal the signed t1 within grace; a mismatch is flagged |
+
+Illustrative example for a provider with commitment 42 on template 1:
 
 ```json
 {
@@ -794,7 +800,7 @@ const claimId = await vaeltrix.claims.file({ paymentId, beneficiary });
 | `POST /v1/events` | Submit a signed event (SEP-10 or SEP-45 authenticated) |
 | `POST /v1/claims/delegate` | Authorise the observer to file claims for a client |
 
-### 16.3 Operations
+### 16.3 Operations — Planned targets
 
 - Observer uptime target 99.9%; missed events are recovered by SEP-31 polling and ledger replay.
 - Evidence bundles are kept for at least the longest claim window plus one year.
@@ -811,7 +817,7 @@ Deployed on 21 October 2026, Stellar Protocol 29, built with `soroban-sdk` 29.0.
 | `vaeltrix_scoreboard` | `CD4TA5VDQUHF2LV5H5LWQSXRUSWTQYZN23MONYYUZQAJ5JBOEGYAP5EC` |
 | Test USDC | `CB2CFWENJ2M5JXWBGUOKO75QVIFJ2EY5WOIOHR6FFYTXAKGS2S3XOIM4` |
 
-Onchain state: template 901 active, one observer added through the timelock, commitment 1 holding 1,000 test USDC, coverage paused and resumed, and one scoreboard batch anchored. Explorer links for every contract and transaction are in [`test-net-deployment.md`](test-net-deployment.md); Wasm hashes are in [`deployments/testnet.json`](deployments/testnet.json).
+Recorded deployment/seed state on 21 October 2026 (not a continuously refreshed balance): template 901 active, one observer added through the timelock, commitment 1 holding 1,000 test USDC, coverage paused and resumed, and one scoreboard batch anchored. Explorer links for every contract and transaction are in [`test-net-deployment.md`](test-net-deployment.md); Wasm hashes are in [`deployments/testnet.json`](deployments/testnet.json).
 
 Read the live stake without project keys:
 
