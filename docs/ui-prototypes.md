@@ -36,13 +36,21 @@ Registration succeeded, but domain verification is pending. This capture does no
 
 The implemented flow is: select a verified provider and template, enter test USDC, simulate, review signer/amount/network/fee/expiry, then explicitly sign in Freighter. A rejection must remain unsigned. See the [UI implementation](../apps/playground/src/main.tsx) and [transaction checks](../apps/playground/src/chain.ts).
 
-Connected-wallet commitment simulation/review screenshots are deferred to [issue #95](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/issues/95). No mock wallet state or fabricated transaction is substituted for them.
+![Real commitment simulation and signing review](images/playground-commit-review.png)
+
+The connected provider admin reviews a 100 test USDC commitment to template 901 before explicitly signing in Freighter. The preview expires after two minutes; an expired preview is re-prepared without automatic submission.
+
+![Confirmed commitment 2 on Testnet](images/playground-commit-confirmed.png)
+
+After signing, commitment 2 is Active with 100 test USDC total and available, zero reserved, and a verified provider domain. The wallet balance became 900 test USDC. [Confirmed creation transaction](https://stellar.expert/explorer/testnet/tx/9df64ff418d93b6ad969b04b15af35d346717f51be44333b2fe08a99f42f8415).
 
 ## Your commitments: manage stake and coverage
 
 After confirmation, the owner's commitments expose add stake, withdraw excess, pause and resume. Each action requires a fresh simulation and review. Another wallet cannot operate seeded commitment 1. The frozen exit cooldown is displayed, but exit transactions are outside this UI.
 
-Live owner-wallet captures of these controls are deferred to [issue #95](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/issues/95). Historical [commit/pause/resume transaction evidence](../test-net-deployment.md#onchain-activity) establishes those recorded operations, not screenshot coverage of every control or completed add/withdraw actions.
+![Owner controls for commitment 2](images/playground-owner-controls.png)
+
+The actual owner sees stake addition, excess withdrawal and pause controls. Resume is disabled while Active. This screenshot documents the controls, not successful execution of every action. Remaining action-state evidence is tracked in [issue #95](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/issues/95). Historical [commit/pause/resume transaction evidence](../test-net-deployment.md#onchain-activity) establishes those recorded operations, not screenshot coverage of every control or completed add/withdraw actions.
 
 ## Planned screens
 
