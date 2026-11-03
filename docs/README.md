@@ -17,5 +17,12 @@ The export records the source PDF's SHA-256; tests detect a changed PDF with a s
 Live runs require authenticated `gh` and the labels from `.github/labels.yml`
 (`bash scripts/labels.sh`). All issue pages and states are read first; exact titles
 and existing VX IDs are skipped, including closed issues and renamed titles.
-Bodies go through standard input, preserving newlines and literal shell characters.
 No issues are created by a dry run. Existing issues are not edited or reopened.
+
+## Documentation site
+
+The interactive reference documentation site is located at [`apps/docs`](../apps/docs):
+- Run locally with `pnpm docs:dev`
+- Build production bundle with `pnpm docs:build`
+- Run test suite with `pnpm docs:test`
+- Regenerate contract reference with `pnpm --filter @vaeltrix/docs generate:contract-reference`

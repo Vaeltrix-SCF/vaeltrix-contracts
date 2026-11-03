@@ -156,10 +156,16 @@ pnpm seed:testnet        # template 901, demo provider and commitment
 
 # Playground
 pnpm --filter @vaeltrix/playground dev
+
+# Docs
+pnpm docs:dev            # run docs site locally
+pnpm docs:build          # build docs site bundle
+pnpm docs:test           # test docs site & code snippets
 ```
 
 ## Documentation
 
+- [`apps/docs`](apps/docs): interactive reference documentation site (built with Fumadocs and Next.js)
 - [`docs/implementation-guide.pdf`](docs/implementation-guide.pdf): the build contract, the source of truth for every name, type, error code, event and API shape
 - [`docs/toolchain.md`](docs/toolchain.md): pinned versions and protocol changes
 - [`docs/testnet-deployment.md`](docs/testnet-deployment.md), [`docs/testnet-seeding.md`](docs/testnet-seeding.md), [`docs/testnet-accounts.md`](docs/testnet-accounts.md): running and using the testnet deployment

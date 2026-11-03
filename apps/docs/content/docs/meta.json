@@ -1,0 +1,12 @@
+{
+  "title": "Vaeltrix Docs",
+  "pages": [
+    "index",
+    "contract-reference",
+    "concepts",
+    "integration-guides",
+    "sdk-reference",
+    "sla-templates",
+    "running-an-observer"
+  ]
+}

@@ -30,7 +30,10 @@
     "test": "vitest run",
     "test:vectors": "cargo test -p vaeltrix-verdict -p vaeltrix-types --test vectors && vitest run packages/core/test/vectors.test.ts",
     "guide:export": "tsx scripts/export-guide.ts",
-    "issues:import": "tsx scripts/issues.ts"
+    "issues:import": "tsx scripts/issues.ts",
+    "docs:dev": "pnpm --filter @vaeltrix/docs dev",
+    "docs:build": "pnpm --filter @vaeltrix/docs build",
+    "docs:test": "pnpm --filter @vaeltrix/docs test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
