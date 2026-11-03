@@ -1,5 +1,6 @@
 //! Stake custody and claim settlement (guide §6). Governance foundation: VX-301.
 #![no_std]
+mod claims;
 mod coverage;
 mod events;
 mod exit;
@@ -45,6 +46,24 @@ impl Bond {
             max_volume_per_period,
             period_secs,
         )
+    }
+    pub fn file_claim(
+        env: Env,
+        claimant: Address,
+        beneficiary: Address,
+        payment: vaeltrix_types::PaymentRef,
+        observer: Option<Address>,
+        receipt: Option<vaeltrix_types::CompletionReceipt>,
+    ) -> Result<u64, Error> {
+        claims::file(&env, claimant, beneficiary, payment, observer, receipt)
+    }
+    pub fn claim(env: Env, id: u64) -> Result<vaeltrix_types::Claim, Error> {
+        touch(&env);
+        claims::claim(&env, id)
+    }
+    pub fn claim_by_payment(env: Env, payment_id: BytesN<32>) -> Option<u64> {
+        touch(&env);
+        claims::by_payment(&env, payment_id)
     }
     pub fn commitment(env: Env, id: u64) -> Result<vaeltrix_types::Commitment, Error> {
         touch(&env);
@@ -158,6 +177,8 @@ impl Bond {
         Ok(())
     }
 }
+#[cfg(test)]
+mod claim_test;
 #[cfg(test)]
 mod test;
 #[cfg(test)]

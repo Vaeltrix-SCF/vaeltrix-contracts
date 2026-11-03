@@ -53,3 +53,18 @@ pub struct ExitFinalized {
     pub at: u64,
     pub amount: i128,
 }
+// Claim lifecycle (VX-305).
+#[contractevent(topics=["claim_new"])]
+pub struct ClaimFiled {
+    #[topic]
+    pub claim_id: u64,
+    pub commitment_id: u64,
+    pub payment_id: BytesN<32>,
+    pub breach: vaeltrix_types::BreachKind,
+    pub penalty: i128,
+    pub reserved: i128,
+    pub shortfall: i128,
+    pub bond: i128,
+    pub claimant: soroban_sdk::Address,
+    pub beneficiary: soroban_sdk::Address,
+}
