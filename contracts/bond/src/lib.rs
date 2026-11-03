@@ -5,6 +5,7 @@ mod coverage;
 mod disputes;
 mod events;
 mod exit;
+mod resolve;
 mod stake;
 mod storage;
 use soroban_sdk::{Address, BytesN, ContractExecutable, Env, contract, contractimpl};
@@ -47,6 +48,9 @@ impl Bond {
             max_volume_per_period,
             period_secs,
         )
+    }
+    pub fn resolve(env: Env, claim_id: u64) -> Result<(), Error> {
+        resolve::resolve(&env, claim_id)
     }
     pub fn challenge(
         env: Env,
@@ -202,6 +206,8 @@ impl Bond {
 mod claim_test;
 #[cfg(test)]
 mod dispute_test;
+#[cfg(test)]
+mod resolve_test;
 #[cfg(test)]
 mod test;
 #[cfg(test)]
