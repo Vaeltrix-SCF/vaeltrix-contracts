@@ -17,6 +17,8 @@ vaeltrix-types = { workspace = true }
 vaeltrix-verdict = { workspace = true }
 
 [dev-dependencies]
+vaeltrix-scoreboard = { path = "../scoreboard" }
+ed25519-dalek = "2.2.0"
 vaeltrix-registry = { path = "../registry" }
 soroban-sdk = { workspace = true, features = ["testutils"] }
 proptest = { workspace = true }
