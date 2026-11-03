@@ -289,6 +289,33 @@ importers:
         specifier: 8.3.4
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
 
+  packages/bindings/bond:
+    dependencies:
+      '@stellar/stellar-sdk':
+        specifier: 17.2.1
+        version: 17.2.1(debug@4.4.3)
+      buffer:
+        specifier: 6.0.3
+        version: 6.0.3
+
+  packages/bindings/registry:
+    dependencies:
+      '@stellar/stellar-sdk':
+        specifier: 17.2.1
+        version: 17.2.1(debug@4.4.3)
+      buffer:
+        specifier: 6.0.3
+        version: 6.0.3
+
+  packages/bindings/scoreboard:
+    dependencies:
+      '@stellar/stellar-sdk':
+        specifier: 17.2.1
+        version: 17.2.1(debug@4.4.3)
+      buffer:
+        specifier: 6.0.3
+        version: 6.0.3
+
   packages/core:
     dependencies:
       '@noble/ed25519':
@@ -309,6 +336,15 @@ importers:
       '@stellar/stellar-sdk':
         specifier: ^17.2.1
         version: 17.2.1(debug@4.4.3)
+      '@vaeltrix/bindings-bond':
+        specifier: workspace:*
+        version: link:../bindings/bond
+      '@vaeltrix/bindings-registry':
+        specifier: workspace:*
+        version: link:../bindings/registry
+      '@vaeltrix/bindings-scoreboard':
+        specifier: workspace:*
+        version: link:../bindings/scoreboard
       '@vaeltrix/core':
         specifier: workspace:*
         version: link:../core

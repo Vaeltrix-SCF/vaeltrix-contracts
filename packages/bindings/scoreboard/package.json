@@ -1,0 +1,17 @@
+{
+  "name": "@vaeltrix/bindings-scoreboard",
+  "version": "0.0.1",
+  "description": "Generated TypeScript bindings for vaeltrix-bindings-scoreboard Stellar contract",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "17.2.1",
+    "buffer": "6.0.3"
+  },
+  "private": true
+}
