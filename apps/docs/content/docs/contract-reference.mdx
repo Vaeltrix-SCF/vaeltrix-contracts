@@ -246,6 +246,48 @@ fn __constructor(env: Env, admin: Address, registry: Address, scoreboard: Addres
 fn commit(env: Env, provider_id: BytesN<32>, template_id: u32, stake_asset: Address, amount: i128, max_volume_per_period: i128, period_secs: u64,) -> Result<u64, Error>
 ```
 
+#### `resolve`
+
+```rust
+fn resolve(env: Env, claim_id: u64) -> Result<(), Error>
+```
+
+#### `challenge`
+
+```rust
+fn challenge(env: Env, claim_id: u64, counter_evidence_hash: BytesN<32>,) -> Result<(), Error>
+```
+
+#### `attest`
+
+```rust
+fn attest(env: Env, observer: Address, claim_id: u64, uphold: bool, attestation_hash: BytesN<32>,) -> Result<(), Error>
+```
+
+#### `claim_votes`
+
+```rust
+fn claim_votes(env: Env, id: u64) -> soroban_sdk::Vec<(Address, bool)>
+```
+
+#### `file_claim`
+
+```rust
+fn file_claim(env: Env, claimant: Address, beneficiary: Address, payment: vaeltrix_types::PaymentRef, observer: Option<Address>, receipt: Option<vaeltrix_types::CompletionReceipt>,) -> Result<u64, Error>
+```
+
+#### `claim`
+
+```rust
+fn claim(env: Env, id: u64) -> Result<vaeltrix_types::Claim, Error>
+```
+
+#### `claim_by_payment`
+
+```rust
+fn claim_by_payment(env: Env, payment_id: BytesN<32>) -> Option<u64>
+```
+
 #### `commitment`
 
 ```rust
