@@ -297,6 +297,9 @@ importers:
       '@noble/hashes':
         specifier: ^2.4.0
         version: 2.4.0
+      '@stellar/stellar-sdk':
+        specifier: 17.2.1
+        version: 17.2.1(debug@4.4.3)
       canonicalize:
         specifier: ^5.1.0
         version: 5.1.0
