@@ -68,3 +68,19 @@ pub struct ClaimFiled {
     pub claimant: soroban_sdk::Address,
     pub beneficiary: soroban_sdk::Address,
 }
+// Challenge and voting (VX-306).
+#[contractevent(topics=["claim_chal"])]
+pub struct ClaimChallenged {
+    #[topic]
+    pub claim_id: u64,
+    pub counter_evidence_hash: BytesN<32>,
+    pub attestation_deadline: u64,
+}
+#[contractevent(topics=["claim_att"])]
+pub struct ClaimAttested {
+    #[topic]
+    pub claim_id: u64,
+    pub observer: soroban_sdk::Address,
+    pub uphold: bool,
+    pub attestation_hash: BytesN<32>,
+}

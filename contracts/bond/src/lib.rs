@@ -2,6 +2,7 @@
 #![no_std]
 mod claims;
 mod coverage;
+mod disputes;
 mod events;
 mod exit;
 mod stake;
@@ -46,6 +47,26 @@ impl Bond {
             max_volume_per_period,
             period_secs,
         )
+    }
+    pub fn challenge(
+        env: Env,
+        claim_id: u64,
+        counter_evidence_hash: BytesN<32>,
+    ) -> Result<(), Error> {
+        disputes::challenge(&env, claim_id, counter_evidence_hash)
+    }
+    pub fn attest(
+        env: Env,
+        observer: Address,
+        claim_id: u64,
+        uphold: bool,
+        attestation_hash: BytesN<32>,
+    ) -> Result<(), Error> {
+        disputes::attest(&env, observer, claim_id, uphold, attestation_hash)
+    }
+    pub fn claim_votes(env: Env, id: u64) -> soroban_sdk::Vec<(Address, bool)> {
+        touch(&env);
+        disputes::votes(&env, id)
     }
     pub fn file_claim(
         env: Env,
@@ -179,6 +200,8 @@ impl Bond {
 }
 #[cfg(test)]
 mod claim_test;
+#[cfg(test)]
+mod dispute_test;
 #[cfg(test)]
 mod test;
 #[cfg(test)]
