@@ -112,4 +112,4 @@ jobs:
         run: cargo test -p vaeltrix-verdict -p vaeltrix-types --test vectors
 
       - name: TypeScript vector suite
-        run: pnpm exec vitest run packages/core/test/vectors.test.ts
+        run: pnpm exec vitest run packages/core/test/vectors.test.ts packages/core/test/primitives.test.ts
