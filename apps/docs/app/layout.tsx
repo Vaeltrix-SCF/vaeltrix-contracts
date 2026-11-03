@@ -5,7 +5,8 @@ import "./global.css";
 
 export const metadata: Metadata = {
   title: "Vaeltrix Docs",
-  description: "Testnet. Documentation for the Vaeltrix protocol - contracts, SDK, SLA templates, and integration guides.",
+  description:
+    "Testnet. Documentation for the Vaeltrix protocol - contracts, SDK, SLA templates, and integration guides.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

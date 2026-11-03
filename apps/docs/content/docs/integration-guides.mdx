@@ -3,11 +3,13 @@ title: Integration guides
 description: "How to integrate with Vaeltrix as a Payment Provider, Sending Client, or Observer."
 ---
 
+> **Implementation status:** The deployed foundation supports provider registration, templates, stake/coverage/exits, and scoreboard storage. Claim filing, challenges, payouts, the observer service and the public SDK are planned; integration steps for them describe the intended protocol, not runnable deployed functionality. See the [technical specification](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/blob/main/TECHNICAL_SPECIFICATION.md) for the status breakdown.
+
 ## Testnet only
 
-All guides on this page interact with the Vaeltrix Stellar testnet deployment. Payouts, stakes, and penalties use testnet USDC (`CB2CFWENJ2M5JXWBGUOKO75QVIFJ2EY5WOIOHR6FFYTXAKGS2S3XOIM4`).
+The implemented registration and stake flows target the Vaeltrix Stellar testnet deployment. Planned claim/payout flows will use the same test asset (`CB2CFWENJ2M5JXWBGUOKO75QVIFJ2EY5WOIOHR6FFYTXAKGS2S3XOIM4`).
 
-The TypeScript snippets below are verified in CI against the real `@vaeltrix/core` specifications.
+The standalone TypeScript examples below are checked in CI for source/display agreement, deadline behaviour, amount boundaries and shared verdict vectors. They are not exported implementations from `@vaeltrix/core`.
 
 ## Payment providers: registration & commitments
 
@@ -30,7 +32,7 @@ export function deriveProviderId(homeDomain: string, adminXdrHex: string): strin
 
 ### 2. Verify your home domain
 
-Publish your admin public key in your domain's `.well-known/stellar.toml` file under `ACCOUNTS` or `SIGNING_KEY`. The protocol verifier will check this file and execute `verify_domain(provider_id)` on `vaeltrix_registry`.
+Publish a `[VAELTRIX]` block in your domain's `.well-known/stellar.toml` containing `PROVIDER_ID`, `REGISTRY_CONTRACT`, `COMMITMENTS`, and `EVENT_SIGNING_KEYS` matching the registered provider. The protocol verifier will check this file and execute `verify_domain(provider_id)` on `vaeltrix_registry`.
 
 ### 3. Sign completion receipts
 
@@ -112,12 +114,25 @@ Calculate the gross elapsed time, deduct any registered carve-out pause duration
 export function evaluateVerdict(params: {
   t0Ms: bigint;
   t1Ms: bigint | null;
+  nowMs: bigint;
   targetMs: bigint;
   graceMs: bigint;
   pauseMs: bigint;
-}): "OnTime" | "LateCompletion" | "NoCompletion" {
+}): "Pending" | "OnTime" | "LateCompletion" | "NoCompletion" {
+  if (
+    [params.t0Ms, params.nowMs, params.targetMs, params.graceMs, params.pauseMs].some(
+      (value) => value < 0n || value > (1n << 64n) - 1n,
+    )
+  ) {
+    throw new RangeError("Timestamp or duration outside u64");
+  }
+  const deadline = params.t0Ms + params.targetMs + params.graceMs + params.pauseMs;
+  if (deadline > (1n << 64n) - 1n) throw new RangeError("Deadline overflow");
   if (params.t1Ms === null) {
-    return "NoCompletion";
+    return params.nowMs > deadline ? "NoCompletion" : "Pending";
+  }
+  if (params.t1Ms > (1n << 64n) - 1n || params.t1Ms < params.t0Ms + params.pauseMs) {
+    throw new RangeError("Invalid completion timeline");
   }
   const gross = params.t1Ms - params.t0Ms;
   const net = gross > params.pauseMs ? gross - params.pauseMs : 0n;
@@ -133,11 +148,7 @@ export function evaluateVerdict(params: {
 Calculate the penalty owed to the sender based on the template's basis points and maximum penalty cap:
 
 ```ts
-export function calculatePenalty(
-  amount: bigint,
-  bps: number,
-  cap: bigint,
-): bigint {
+export function calculatePenalty(amount: bigint, bps: number, cap: bigint): bigint {
   const penalty = (amount * BigInt(bps)) / 10000n;
   return penalty > cap ? cap : penalty;
 }

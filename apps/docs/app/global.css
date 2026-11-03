@@ -37,7 +37,16 @@
 body {
   background: var(--color-fd-background);
   color: var(--color-fd-foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
 }
 
 .font-mono,

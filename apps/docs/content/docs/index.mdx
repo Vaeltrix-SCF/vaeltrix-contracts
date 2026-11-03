@@ -3,6 +3,8 @@ title: Overview
 description: "What Vaeltrix is, and what this documentation covers."
 ---
 
+> **Implementation status:** The deployed foundation supports provider registration, templates, stake/coverage/exits, and scoreboard storage. Claim filing, challenges, payouts, the observer service and the public SDK are planned; integration steps for them describe the intended protocol, not runnable deployed functionality. See the [technical specification](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/blob/main/TECHNICAL_SPECIFICATION.md) for the status breakdown.
+
 ## What Vaeltrix is
 
 Vaeltrix is an open protocol on Stellar where anchors and payment providers stake USDC against public, machine-readable payout-time agreements. When a covered SEP-31 payout breaches its agreement, the sender is paid an automatic penalty directly from that stake. Every outcome feeds a public reliability scoreboard per provider, corridor, and asset.

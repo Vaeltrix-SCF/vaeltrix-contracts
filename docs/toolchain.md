@@ -98,3 +98,23 @@ Node 24 is the active LTS. The JS SDK, Vitest 5 and pnpm 12 all support it. CI r
 - [Zipper, Protocol 27 upgrade guide](https://stellar.org/blog/foundation-news/stellar-zipper-protocol-27-upgrade-guide)
 - `@stellar/stellar-sdk` 17.2.1 README, "CLI" section (bundled in the npm package)
 - `pnpm/action-setup` v6 README; `actions-rust-lang/setup-rust-toolchain` v2 README
+
+## Docs command troubleshooting
+
+The documentation site is part of the workspace: use `pnpm docs:dev`,
+`pnpm docs:build`, and `pnpm docs:test` from the repository root.
+
+If pnpm fails before a script starts with `spawnSync .../pnpm ENOEXEC`, the selected
+pnpm installation is not executable by the operating system. In the affected local
+installation, the pinned `bin/pnpm` was still the package's text bootstrap rather
+than the installed native executable, and nested `pnpm` commands attempted to
+execute it directly. Reinstall the pinned pnpm version using the supported setup
+above, and confirm `pnpm --version` returns `12.14.0`. This is separate from a docs
+build or Stellar RPC failure; changing Next.js settings or contract keys will not
+repair a pnpm launcher.
+
+CI builds Next.js and Fumadocs output before linting. `.next` and `.source` are
+generated and excluded from ESLint and Prettier, while authored docs scripts
+remain checked. The generated contract-reference MDX is maintained by its generator
+and checked by the docs tests, not reformatted as handwritten content. Root
+`pnpm test` includes the docs script tests as well as the existing workspace tests.

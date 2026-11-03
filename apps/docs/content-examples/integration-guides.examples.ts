@@ -75,12 +75,25 @@ export function buildCompletionReceipt(params: {
 export function evaluateVerdict(params: {
   t0Ms: bigint;
   t1Ms: bigint | null;
+  nowMs: bigint;
   targetMs: bigint;
   graceMs: bigint;
   pauseMs: bigint;
-}): "OnTime" | "LateCompletion" | "NoCompletion" {
+}): "Pending" | "OnTime" | "LateCompletion" | "NoCompletion" {
+  if (
+    [params.t0Ms, params.nowMs, params.targetMs, params.graceMs, params.pauseMs].some(
+      (value) => value < 0n || value > (1n << 64n) - 1n,
+    )
+  ) {
+    throw new RangeError("Timestamp or duration outside u64");
+  }
+  const deadline = params.t0Ms + params.targetMs + params.graceMs + params.pauseMs;
+  if (deadline > (1n << 64n) - 1n) throw new RangeError("Deadline overflow");
   if (params.t1Ms === null) {
-    return "NoCompletion";
+    return params.nowMs > deadline ? "NoCompletion" : "Pending";
+  }
+  if (params.t1Ms > (1n << 64n) - 1n || params.t1Ms < params.t0Ms + params.pauseMs) {
+    throw new RangeError("Invalid completion timeline");
   }
   const gross = params.t1Ms - params.t0Ms;
   const net = gross > params.pauseMs ? gross - params.pauseMs : 0n;
@@ -92,11 +105,7 @@ export function evaluateVerdict(params: {
 // END evaluate-verdict
 
 // START calculate-penalty
-export function calculatePenalty(
-  amount: bigint,
-  bps: number,
-  cap: bigint,
-): bigint {
+export function calculatePenalty(amount: bigint, bps: number, cap: bigint): bigint {
   const penalty = (amount * BigInt(bps)) / 10000n;
   return penalty > cap ? cap : penalty;
 }

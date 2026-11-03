@@ -15,4 +15,3 @@ export const useMDXComponents = getMDXComponents;
 declare global {
   type MDXProvidedComponents = ReturnType<typeof getMDXComponents>;
 }
-

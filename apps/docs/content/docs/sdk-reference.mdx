@@ -3,9 +3,11 @@ title: SDK reference
 description: "Working with @vaeltrix/core: amount scaling, ID derivation, receipts, Merkle proofs, and error handling."
 ---
 
+> **Implementation status:** The deployed foundation supports provider registration, templates, stake/coverage/exits, and scoreboard storage. Claim filing, challenges, payouts, the observer service and the public SDK are planned; integration steps for them describe the intended protocol, not runnable deployed functionality. See the [technical specification](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/blob/main/TECHNICAL_SPECIFICATION.md) for the status breakdown.
+
 ## Overview
 
-The `@vaeltrix/core` package provides zero-dependency, pure cryptographic and mathematical primitives shared across the contracts, the observer service, the REST API, and frontend applications.
+`@vaeltrix/core` currently contains scaffolds, not a released implementation of these helpers. The functions below are standalone reference examples checked by the documentation tests; do not import them from the package as an available API.
 
 ## Amount scaling
 
@@ -13,9 +15,17 @@ Money on Stellar and in Soroban contracts is always represented as 128-bit integ
 
 ```ts
 export function toStroops(amountDecimal: string): bigint {
-  const [whole, frac = ""] = amountDecimal.split(".");
-  const paddedFrac = frac.padEnd(7, "0").slice(0, 7);
-  return BigInt(whole + paddedFrac);
+  if (!/^-?\d+(\.\d{1,7})?$/.test(amountDecimal)) {
+    throw new RangeError("Expected a decimal with at most seven fractional digits");
+  }
+  const negative = amountDecimal.startsWith("-");
+  const [whole, frac = ""] = (negative ? amountDecimal.slice(1) : amountDecimal).split(".");
+  const magnitude = BigInt(whole + frac.padEnd(7, "0"));
+  const value = negative ? -magnitude : magnitude;
+  if (value < -(1n << 127n) || value > (1n << 127n) - 1n) {
+    throw new RangeError("Amount outside i128");
+  }
+  return value;
 }
 
 export function fromStroops(stroops: bigint): string {
@@ -66,16 +76,16 @@ export function verifyReceiptSignature(params: {
 
 ### 131-byte receipt binary layout
 
-| Offset | Length | Field | Encoding |
-| --- | --- | --- | --- |
-| 0 | 19 | Domain tag | ASCII `"VAELTRIX:RECEIPT:v1"` |
-| 19 | 32 | Network ID | `SHA256(network_passphrase)` |
-| 51 | 32 | Payment ID | Raw 32 bytes |
-| 83 | 8 | Commitment ID | Big-endian uint64 |
-| 91 | 16 | Amount | Big-endian uint128 |
-| 107 | 8 | Start time (`t0_ms`) | Big-endian uint64 ms |
-| 115 | 8 | End time (`t1_ms`) | Big-endian uint64 ms |
-| 123 | 8 | Pause time (`pause_ms`) | Big-endian uint64 ms |
+| Offset | Length | Field                   | Encoding                      |
+| ------ | ------ | ----------------------- | ----------------------------- |
+| 0      | 19     | Domain tag              | ASCII `"VAELTRIX:RECEIPT:v1"` |
+| 19     | 32     | Network ID              | `SHA256(network_passphrase)`  |
+| 51     | 32     | Payment ID              | Raw 32 bytes                  |
+| 83     | 8      | Commitment ID           | Big-endian uint64             |
+| 91     | 16     | Amount                  | Big-endian uint128            |
+| 107    | 8      | Start time (`t0_ms`)    | Big-endian uint64 ms          |
+| 115    | 8      | End time (`t1_ms`)      | Big-endian uint64 ms          |
+| 123    | 8      | Pause time (`pause_ms`) | Big-endian uint64 ms          |
 
 ## Merkle tree leaf hashing
 
@@ -98,7 +108,7 @@ export function computeMerkleLeaf(params: {
 
 ## Error handling
 
-The SDK wraps raw Soroban simulation errors into structured `VaeltrixError` instances, providing clear diagnostic messages:
+The following standalone example shows a proposed error wrapper. `VaeltrixError` is defined in the example source; it is not currently exported by the SDK:
 
 ```ts
 export function handleContractError(error: unknown): string {

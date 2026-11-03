@@ -95,7 +95,11 @@ function parseRustMethods(source, structName) {
   while ((m = methodRegex.exec(block)) !== null) {
     const [, name, args, returnType] = m;
     const doc = extractPrecedingDocComment(block, m.index);
-    const cleanArgs = args.split("\n").map(l => l.trim()).filter(Boolean).join(" ");
+    const cleanArgs = args
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .join(" ");
     const cleanRet = returnType ? returnType.trim() : "()";
     results.push({
       name,
@@ -144,9 +148,9 @@ function parseStructs(source) {
     const doc = extractPrecedingDocComment(source, m.index);
     const fields = body
       .split("\n")
-      .map(l => l.trim())
-      .filter(l => l.startsWith("pub "))
-      .map(l => l.replace(/,$/, ""));
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith("pub "))
+      .map((l) => l.replace(/,$/, ""));
     results.push({ name, doc, fields });
   }
   return results;
@@ -165,9 +169,9 @@ function parseEnums(source) {
     const doc = extractPrecedingDocComment(source, m.index);
     const variants = body
       .split("\n")
-      .map(l => l.trim())
-      .filter(l => l && !l.startsWith("//") && !l.startsWith("#"))
-      .map(l => l.replace(/,$/, ""));
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("//") && !l.startsWith("#"))
+      .map((l) => l.replace(/,$/, ""));
     results.push({ name, doc, variants });
   }
   return results;

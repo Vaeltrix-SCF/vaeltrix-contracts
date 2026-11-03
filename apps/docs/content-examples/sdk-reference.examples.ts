@@ -15,9 +15,17 @@ export class VaeltrixError extends Error {
 
 // START amount-conversion
 export function toStroops(amountDecimal: string): bigint {
-  const [whole, frac = ""] = amountDecimal.split(".");
-  const paddedFrac = frac.padEnd(7, "0").slice(0, 7);
-  return BigInt(whole + paddedFrac);
+  if (!/^-?\d+(\.\d{1,7})?$/.test(amountDecimal)) {
+    throw new RangeError("Expected a decimal with at most seven fractional digits");
+  }
+  const negative = amountDecimal.startsWith("-");
+  const [whole, frac = ""] = (negative ? amountDecimal.slice(1) : amountDecimal).split(".");
+  const magnitude = BigInt(whole + frac.padEnd(7, "0"));
+  const value = negative ? -magnitude : magnitude;
+  if (value < -(1n << 127n) || value > (1n << 127n) - 1n) {
+    throw new RangeError("Amount outside i128");
+  }
+  return value;
 }
 
 export function fromStroops(stroops: bigint): string {

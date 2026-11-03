@@ -2,7 +2,6 @@ import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
 function Logo() {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
     <img
       src="/brand/vaeltrix-mark.svg"
       alt="Vaeltrix"

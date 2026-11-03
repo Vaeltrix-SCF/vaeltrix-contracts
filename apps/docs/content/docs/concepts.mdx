@@ -3,6 +3,8 @@ title: Concepts
 description: "Core architecture: commitments, measurement, carve-outs, claims, and the scoreboard."
 ---
 
+> **Implementation status:** The deployed foundation supports provider registration, templates, stake/coverage/exits, and scoreboard storage. Claim filing, challenges, payouts, the observer service and the public SDK are planned; integration steps for them describe the intended protocol, not runnable deployed functionality. See the [technical specification](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/blob/main/TECHNICAL_SPECIFICATION.md) for the status breakdown.
+
 ## Overview
 
 Vaeltrix creates a financial bridge between fast onchain Stellar settlements and offchain banking / mobile money rails. Rather than relying on private agreements or unenforced estimates, Vaeltrix establishes a verifiable, staked SLA layer.
@@ -22,7 +24,7 @@ stateDiagram-v2
 A **Provider** represents an anchor, payment processor, or fintech on Stellar.
 
 - **Home domain binding:** Providers register with an admin address and a `home_domain` (e.g. `anchor.example.com`). This domain must host a standard SEP-1 `stellar.toml` file.
-- **Provider ID derivation:** The unique 32-byte provider ID is derived deterministically from the home domain and admin address: `SHA256(home_domain + ":" + admin)`.
+- **Provider ID derivation:** The unique 32-byte provider ID is derived deterministically from the home domain and admin address: `SHA256("VAELTRIX:PROVIDER:v1" || lowercase(home_domain) || admin_scaddress_xdr)`.
 - **Signer keys:** Providers register Ed25519 public keys used to sign offchain completion receipts. Signers can be rotated by the provider admin without altering existing commitments.
 - **Verification:** An independent verifier role checks that the provider admin key matches the signing keys published in the domain's `stellar.toml`. Until verified, providers cannot create active commitments.
 - **Lifecycle states:**
@@ -51,12 +53,12 @@ An **SLA template** is an immutable, governance-approved performance standard:
 
 Real-world payouts encounter legitimate offchain interruptions. Vaeltrix accounts for these with published **carve-outs**:
 
-| Carve-out | Description |
-| --- | --- |
-| `ReceiverBankHoliday` | Receiving commercial banks closed due to official holiday or weekend. |
-| `ComplianceHoldDeclared` | Payment flagged for mandatory AML/sanctions review with proof. |
-| `InvalidBeneficiary` | Recipient account details rejected by downstream clearinghouse. |
-| `SenderInfoIncomplete` | Missing KYC details required from the sending institution. |
+| Carve-out                | Description                                                           |
+| ------------------------ | --------------------------------------------------------------------- |
+| `ReceiverBankHoliday`    | Receiving commercial banks closed due to official holiday or weekend. |
+| `ComplianceHoldDeclared` | Payment flagged for mandatory AML/sanctions review with proof.        |
+| `InvalidBeneficiary`     | Recipient account details rejected by downstream clearinghouse.       |
+| `SenderInfoIncomplete`   | Missing KYC details required from the sending institution.            |
 
 When a carve-out occurs, the provider records a pause duration (`pause_ms`), subject to the template's `max_hold_ms` ceiling. The net duration evaluated for SLA compliance is:
 
@@ -71,7 +73,8 @@ A **Commitment** binds a provider to a specific template version and locks colla
 - **Isolated stake:** Stake is held exclusively in `vaeltrix_bond`. Each commitment is strictly isolated - stake from one provider or corridor cannot subsidize another.
 - **Minimum stake formula:**
   ```
-  min_stake = stake_floor + (max_volume_per_period * stake_k / 10000)
+  daily_volume = floor(max_volume_per_period * 86400 / period_secs)
+  min_stake = max(stake_floor, floor(stake_k * daily_volume * bps / 10000))
   ```
 - **Available stake:**
   ```
@@ -79,7 +82,7 @@ A **Commitment** binds a provider to a specific template version and locks colla
   ```
   Any new claim reserves penalty funds from available stake. If available stake is insufficient, the commitment cannot cover additional volume.
 - **Coverage checks:** `is_covered(commitment_id, t0_ms)` ensures that a payment was initiated while the commitment was active and not paused.
-- **Exiting:** Calling `request_exit()` freezes the commitment and starts an exit cooldown timer (`exit_cooldown_secs + exit_extra_secs`). Once the cooldown elapses and all open claims are resolved, `finalize_exit()` returns remaining collateral to the provider.
+- **Exiting:** Calling `request_exit()` freezes the commitment and starts an exit cooldown timer (the frozen `exit_cooldown_secs`, which already includes `exit_extra_secs`). Once the cooldown elapses and all open claims are resolved, `finalize_exit()` returns remaining collateral to the provider.
 
 ## Payment measurement timeline
 
@@ -94,7 +97,7 @@ t0 (Ledger Close)           Pause (Carve-out)              t1 (Signed Receipt)
 
 1. **`t0_ms` (Start):** The ledger close timestamp of the Stellar transaction containing the payment initiation memo or SEP-31 reference.
 2. **`t1_ms` (Completion):** The timestamp on a cryptographic receipt signed by the provider's registered signer, confirming funds reached the beneficiary.
-3. **`payment_id`:** Derived deterministically: `SHA256("VAELTRIX:PAYMENT:v1" || provider_id || sep31_tx_id)`.
+3. **`payment_id`:** Derived deterministically: `SHA256("VAELTRIX:PAYMENT:v1" || sep31_tx_id || provider_id)`.
 
 ## Claims and dispute resolution
 
@@ -103,18 +106,18 @@ When a payment breaches its SLA (either completed late or never completed), a cl
 ```mermaid
 stateDiagram-v2
     [*] --> Filed: file_claim(payment, evidence)
-    Filed --> Challenged: challenge_claim(counter_evidence)
-    Filed --> Paid: resolve_claim() (no dispute)
-    Challenged --> Paid: resolve_claim() (observers uphold)
-    Challenged --> Rejected: resolve_claim() (observers reject)
-    Filed --> Expired: expire_claim()
+    Filed --> Challenged: challenge(counter_evidence)
+    Filed --> Paid: resolve() (no dispute)
+    Challenged --> Paid: resolve() (observers uphold)
+    Challenged --> Rejected: resolve() (observers reject)
+    Challenged --> Expired: resolve() (no quorum after deadline)
     Paid --> [*]
     Rejected --> [*]
     Expired --> [*]
 ```
 
 - **Filing:** The sending client or an observer files a claim with the `PaymentRef` and evidence hash. A claim bond is deposited to deter spam.
-- **Challenge window:** The provider has `challenge_window_secs` to review the claim. If undisputed, the claim resolves automatically in favor of the claimant.
+- **Challenge window:** The provider has `challenge_window_secs` to review the claim. In the planned flow, anyone may call `resolve` after the deadline; a keeper can automate that call.
 - **Observer adjudication:** If challenged, independent observers review the evidence bundle offchain and cast attestation votes onchain. If the quorum threshold is met and the breach is upheld, the penalty is released to the beneficiary and the claim bond is returned. If rejected, the claim bond is forfeited.
 
 ## Scoreboard and daily batches

@@ -3,6 +3,8 @@ title: SLA templates
 description: "Specification of SLA templates, corridor scopes, penalty models, and live Template 901."
 ---
 
+> **Implementation status:** The deployed foundation supports provider registration, templates, stake/coverage/exits, and scoreboard storage. Claim filing, challenges, payouts, the observer service and the public SDK are planned; integration steps for them describe the intended protocol, not runnable deployed functionality. See the [technical specification](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/blob/main/TECHNICAL_SPECIFICATION.md) for the status breakdown.
+
 ## What is an SLA template?
 
 An SLA template defines an objective, verifiable performance contract for offchain cross-border payouts. Anchors commit stake to a specific template version, and sending clients route payments knowing the exact speed target and financial remedy.
@@ -11,49 +13,46 @@ Templates are immutable once activated. When parameters require tuning, governan
 
 ## Template parameters
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `u32` | Unique template identifier (e.g. `901`). |
-| `version` | `u32` | Version number (starts at 1). |
-| `metric` | `Metric` | Currently `TimeToCompletion`. |
-| `start_event` | `EventKind` | Event marking the beginning of measurement (`SenderDebitConfirmed` or `OnChainSettled`). |
-| `end_event` | `EventKind` | Event marking delivery (`ReceiverCreditConfirmed` or `RecipientAcknowledged`). |
-| `target_ms` | `u64` | SLA delivery target in milliseconds. |
-| `grace_ms` | `u64` | Grace buffer in milliseconds before breach penalties apply. |
-| `max_hold_ms` | `u64` | Maximum allowable cumulative pause duration for carve-outs. |
-| `claim_window_secs` | `u64` | Maximum window after payment initiation during which claims can be filed. |
-| `evidence_mode` | `EvidenceMode` | Mode of evidence required (`DualSigned`, `ProviderSigned`, or `ObserverOnly`). |
-| `scope` | `Scope` | Asset, corridor, direction, and amount bounds. |
-| `carve_outs` | `Vec<CarveOut>` | Allowed pause justifications. |
-| `penalty` | `PenaltyModel` | Formula for calculating penalty compensation. |
+| Field               | Type            | Description                                                                    |
+| ------------------- | --------------- | ------------------------------------------------------------------------------ |
+| `id`                | `u32`           | Unique template identifier (e.g. `901`).                                       |
+| `version`           | `u32`           | Version number (starts at 1).                                                  |
+| `metric`            | `Metric`        | Currently `TimeToCompletion`.                                                  |
+| `start_event`       | `EventKind`     | Event marking the beginning of measurement (`OnChainSettled` only in V0).      |
+| `end_event`         | `EventKind`     | Event marking delivery (`ReceiverCreditConfirmed` only in V0).                 |
+| `target_ms`         | `u64`           | SLA delivery target in milliseconds.                                           |
+| `grace_ms`          | `u64`           | Grace buffer in milliseconds before breach penalties apply.                    |
+| `max_hold_ms`       | `u64`           | Maximum allowable cumulative pause duration for carve-outs.                    |
+| `claim_window_secs` | `u64`           | Claim filing window measured from the breach deadline.                         |
+| `evidence_mode`     | `EvidenceMode`  | Mode of evidence required (`DualSigned`, `ProviderSigned`, or `ObserverOnly`). |
+| `scope`             | `Scope`         | Asset, corridor, direction, and amount bounds.                                 |
+| `carve_outs`        | `Vec<CarveOut>` | Allowed pause justifications.                                                  |
+| `penalty`           | `PenaltyModel`  | Formula for calculating penalty compensation.                                  |
 
 ## Live testnet template: Template 901
 
 Template 901 is active on Stellar testnet and backed by Commitment 1:
 
 - **ID & Version:** `901` (Version 1)
-- **Target Duration:** 60 minutes (`3,600,000 ms`)
-- **Grace Period:** 15 minutes (`900,000 ms`)
-- **Maximum Hold:** 24 hours (`86,400,000 ms`)
-- **Claim Window:** 7 days (`604,800 s`)
+- **Target Duration:** 2 minutes (`120,000 ms`)
+- **Grace Period:** 10 seconds (`10,000 ms`)
+- **Maximum Hold:** 60 seconds (`60,000 ms`)
+- **Claim Window:** 10 minutes (`600 s`)
 - **Corridor Scope:**
   - Asset: Testnet USDC (`CB2CFWENJ2M5JXWBGUOKO75QVIFJ2EY5WOIOHR6FFYTXAKGS2S3XOIM4`)
-  - Direction: `Outbound` (Onchain Stellar payment to local fiat account)
-  - Amount Range: 10 USDC to 5,000 USDC
+  - Direction: `Inbound` (as recorded by the seeded scope)
+  - Amount Range: 1 USDC to 10,000 USDC
 - **Penalty Model:**
   - Model: `PerBreachBps`
   - Basis Points: 500 bps (5% of payment volume)
-  - Cap: 50 USDC (`500,000,000` stroops)
-- **Approved Carve-outs:**
-  - `ReceiverBankHoliday`: Automated hold during weekend or national bank holidays.
-  - `ComplianceHoldDeclared`: Cryptographically attested AML/sanctions review.
-  - `InvalidBeneficiary`: Immediate notification when downstream bank rejects account numbers.
+  - Cap: 100 USDC (`1,000,000,000` stroops)
+- **Approved Carve-outs:** `ComplianceHoldDeclared` only in the seeded template. Other carve-out variants exist in the shared types and pure rules, but are not enabled in template 901.
 
 ## Proposing and activating templates
 
 Templates cannot be altered arbitrarily:
 
-1. **`propose_template`**: Governance or providers submit a full `SlaTemplate` struct. The template status is set to `Proposed`.
-2. **Timelock delay**: The template must wait for the registry timelock duration (`timelock_secs`, default 7 days) before it can take effect.
+1. **`propose_template`**: The registry admin submits a full `SlaTemplate` struct. The template status is set to `Proposed`.
+2. **Timelock delay**: The template must wait for the registry timelock duration (`timelock_secs`, 60 seconds in the Testnet deployment) before it can take effect.
 3. **`activate_template`**: Once the timelock elapses, anyone can call `activate_template(id, version)` to transition the status to `Active`. Providers may now bind commitments to this template.
 4. **`deprecate_template`**: When retiring a template version, governance calls `deprecate_template`. Existing commitments continue until exit, but no new commitments may bind to deprecated templates.
