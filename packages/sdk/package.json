@@ -24,6 +24,9 @@
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^17.2.1",
-    "@vaeltrix/core": "workspace:*"
+    "@vaeltrix/core": "workspace:*",
+    "@vaeltrix/bindings-registry": "workspace:*",
+    "@vaeltrix/bindings-bond": "workspace:*",
+    "@vaeltrix/bindings-scoreboard": "workspace:*"
   }
 }
