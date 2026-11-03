@@ -6,6 +6,8 @@ export default tseslint.config(
   {
     ignores: [
       "**/dist/**",
+      "**/.next/**",
+      "**/.source/**",
       "**/node_modules/**",
       "target/**",
       "packages/bindings/**",
@@ -13,6 +15,10 @@ export default tseslint.config(
     ],
   },
   js.configs.recommended,
+  {
+    files: ["apps/docs/scripts/**/*.mjs"],
+    languageOptions: { globals: { console: "readonly", process: "readonly" } },
+  },
   ...tseslint.configs.strict,
   {
     rules: {

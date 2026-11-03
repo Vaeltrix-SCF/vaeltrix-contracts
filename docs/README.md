@@ -6,6 +6,14 @@ This page is the entry point to all Vaeltrix development documentation.
 
 [Project overview and current implementation status](../README.md).
 
+## Documentation site
+
+The interactive reference documentation site is located at [`apps/docs`](../apps/docs):
+- Run locally with `pnpm docs:dev`
+- Build production bundle with `pnpm docs:build`
+- Run test suite with `pnpm docs:test`
+- Regenerate contract reference with `pnpm --filter @vaeltrix/docs generate:contract-reference`
+
 ## Planning
 
 [Authoritative implementation guide (PDF)](implementation-guide.pdf), [searchable export](implementation-guide.md), and [VX issue tracker](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/issues).
@@ -51,3 +59,4 @@ This page is the entry point to all Vaeltrix development documentation.
 The PDF remains authoritative. Regenerate its Markdown export with `pnpm guide:export` after installing Poppler. The export records the PDF SHA-256; tests detect stale exports. Toolchain corrections are recorded in [toolchain.md](toolchain.md).
 
 `pnpm issues:import --dry-run` previews issue definitions offline. Live imports require authenticated `gh` and repository labels; see [the importer](../scripts/issues.ts). Existing issues are not edited or reopened.
+>>>>>>> origin/main

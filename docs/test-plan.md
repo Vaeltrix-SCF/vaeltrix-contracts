@@ -26,7 +26,7 @@ Authorization checks target mutating entry points; the suites include explicit a
 
 ## TypeScript tests
 
-`pnpm test` currently reports **63 passing and five skipped tests across 10 files** without a database test URL. Tests cover deployment/seed orchestration, manifest validation, guide export, issue import, vectors, the database layer, API foundations, and playground wallet/transaction handling. Wallet tests cover network/account mismatch, missing/unresponsive extensions, simulation rejection, transaction expiry/integrity and confirmation polling; they do not approve real Freighter requests.
+`pnpm test` currently reports **102 passing and five skipped tests across 13 files** without a database test URL. This includes 39 documentation tests for generated reference parsing, source/display agreement, shared verdict vectors and amount/deadline boundaries. Tests cover deployment/seed orchestration, manifest validation, guide export, issue import, vectors, the database layer, API foundations, and playground wallet/transaction handling. Wallet tests cover network/account mismatch, missing/unresponsive extensions, simulation rejection, transaction expiry/integrity and confirmation polling; they do not approve real Freighter requests.
 
 The five database tests require an isolated Postgres test database and `DATABASE_TEST_URL`. CI provisions Postgres 16 and sets this URL. See [migration instructions](../db/migrations/README.md); do not point reset/migration tests at a production database. A locally skipped test is not a pass.
 

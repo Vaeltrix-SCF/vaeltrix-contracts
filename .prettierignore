@@ -6,3 +6,7 @@ packages/bindings
 deployments
 docs/*.pdf
 *.md
+
+**/.next/**
+**/.source/**
+apps/docs/content/docs/contract-reference.mdx

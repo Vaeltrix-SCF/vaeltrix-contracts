@@ -1,0 +1,129 @@
+---
+title: SDK reference
+description: "Working with @vaeltrix/core: amount scaling, ID derivation, receipts, Merkle proofs, and error handling."
+---
+
+> **Implementation status:** The deployed foundation supports provider registration, templates, stake/coverage/exits, and scoreboard storage. Claim filing, challenges, payouts, the observer service and the public SDK are planned; integration steps for them describe the intended protocol, not runnable deployed functionality. See the [technical specification](https://github.com/Vaeltrix-SCF/vaeltrix-contracts/blob/main/TECHNICAL_SPECIFICATION.md) for the status breakdown.
+
+## Overview
+
+`@vaeltrix/core` currently contains scaffolds, not a released implementation of these helpers. The functions below are standalone reference examples checked by the documentation tests; do not import them from the package as an available API.
+
+## Amount scaling
+
+Money on Stellar and in Soroban contracts is always represented as 128-bit integers (`i128` in Rust, `bigint` in TypeScript) in the asset's base units (stroops, with 7 decimal places for USDC). Never use floating-point numbers (`number`) for financial math.
+
+```ts
+export function toStroops(amountDecimal: string): bigint {
+  if (!/^-?\d+(\.\d{1,7})?$/.test(amountDecimal)) {
+    throw new RangeError("Expected a decimal with at most seven fractional digits");
+  }
+  const negative = amountDecimal.startsWith("-");
+  const [whole, frac = ""] = (negative ? amountDecimal.slice(1) : amountDecimal).split(".");
+  const magnitude = BigInt(whole + frac.padEnd(7, "0"));
+  const value = negative ? -magnitude : magnitude;
+  if (value < -(1n << 127n) || value > (1n << 127n) - 1n) {
+    throw new RangeError("Amount outside i128");
+  }
+  return value;
+}
+
+export function fromStroops(stroops: bigint): string {
+  const sign = stroops < 0n ? "-" : "";
+  const abs = stroops < 0n ? -stroops : stroops;
+  const str = abs.toString().padStart(8, "0");
+  const whole = str.slice(0, -7) || "0";
+  const frac = str.slice(-7).replace(/0+$/, "");
+  return frac ? `${sign}${whole}.${frac}` : `${sign}${whole}`;
+}
+```
+
+- `toStroops("1000.5")` -> `10005000000n`
+- `fromStroops(10005000000n)` -> `"1000.5"`
+
+## Payment ID derivation
+
+Each covered payment receives a globally unique, collision-resistant 32-byte hash:
+
+```ts
+export function derivePaymentId(sep31TxId: string, providerIdHex: string): string {
+  const prefix = Buffer.from("VAELTRIX:PAYMENT:v1", "ascii");
+  const txBytes = Buffer.from(sep31TxId, "utf8");
+  const providerBytes = Buffer.from(providerIdHex, "hex");
+  return createHash("sha256")
+    .update(Buffer.concat([prefix, txBytes, providerBytes]))
+    .digest("hex");
+}
+```
+
+## Receipt verification
+
+Completion receipts are exactly 131 bytes long, encoded with big-endian integer fields and signed with Ed25519:
+
+```ts
+export function verifyReceiptSignature(params: {
+  receiptBytes: Buffer;
+  publicKey: KeyObject;
+  signatureHex: string;
+}): boolean {
+  if (params.receiptBytes.length !== 131) {
+    return false;
+  }
+  const signature = Buffer.from(params.signatureHex, "hex");
+  return verify(null, params.receiptBytes, params.publicKey, signature);
+}
+```
+
+### 131-byte receipt binary layout
+
+| Offset | Length | Field                   | Encoding                      |
+| ------ | ------ | ----------------------- | ----------------------------- |
+| 0      | 19     | Domain tag              | ASCII `"VAELTRIX:RECEIPT:v1"` |
+| 19     | 32     | Network ID              | `SHA256(network_passphrase)`  |
+| 51     | 32     | Payment ID              | Raw 32 bytes                  |
+| 83     | 8      | Commitment ID           | Big-endian uint64             |
+| 91     | 16     | Amount                  | Big-endian uint128            |
+| 107    | 8      | Start time (`t0_ms`)    | Big-endian uint64 ms          |
+| 115    | 8      | End time (`t1_ms`)      | Big-endian uint64 ms          |
+| 123    | 8      | Pause time (`pause_ms`) | Big-endian uint64 ms          |
+
+## Merkle tree leaf hashing
+
+Daily batches anchored to `vaeltrix_scoreboard` contain a Merkle root over all payment verdicts processed during that UTC day:
+
+```ts
+export function computeMerkleLeaf(params: {
+  paymentIdHex: string;
+  verdict: "OnTime" | "LateCompletion" | "NoCompletion";
+  latencyMs: bigint;
+}): Buffer {
+  const payload = Buffer.concat([
+    Buffer.from(params.paymentIdHex, "hex"),
+    Buffer.from(params.verdict, "ascii"),
+    Buffer.from(params.latencyMs.toString(), "ascii"),
+  ]);
+  return createHash("sha256").update(payload).digest();
+}
+```
+
+## Error handling
+
+The following standalone example shows a proposed error wrapper. `VaeltrixError` is defined in the example source; it is not currently exported by the SDK:
+
+```ts
+export function handleContractError(error: unknown): string {
+  if (error instanceof VaeltrixError) {
+    switch (error.errorName) {
+      case "InsufficientStake":
+        return "Provider does not have enough unreserved stake to cover this volume.";
+      case "NotCovered":
+        return "Payment initiation timestamp falls outside the active commitment coverage window.";
+      case "OutOfScope":
+        return "Payment parameters (asset, amount, or corridor) do not match the SLA template scope.";
+      default:
+        return `Contract error (${error.code}): ${error.message}`;
+    }
+  }
+  return error instanceof Error ? error.message : "Unknown transaction error";
+}
+```

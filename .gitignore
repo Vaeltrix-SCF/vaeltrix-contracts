@@ -7,6 +7,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 .vitest/
+.next/
+.vercel/
+.source/
 
 # Env and secrets (guide §3.5: secrets never go in the repo)
 .env

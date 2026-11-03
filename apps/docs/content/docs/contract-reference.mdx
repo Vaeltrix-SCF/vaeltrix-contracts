@@ -1,0 +1,753 @@
+---
+title: Contract reference
+description: "Contract addresses, functions, types, and error codes generated from the deployed testnet contracts."
+---
+
+{/*
+  GENERATED FILE - do not edit by hand.
+
+  Produced by scripts/generate-contract-reference.mjs from:
+    - deployments/testnet.json (contract addresses, wasm hashes, accounts)
+    - contracts/(registry, bond, scoreboard)/src/lib.rs (method signatures and doc comments)
+    - crates/vaeltrix-types/src/(structs, enums, errors).rs (data structures, enums, error codes)
+
+  Regenerate with `pnpm --filter @vaeltrix/docs generate:contract-reference`
+  (also runs automatically before dev/build/test).
+*/}
+
+# Contract reference
+
+Testnet deployment. Every address, function signature, struct, enum, and error code below is extracted directly from the actual deployed testnet contracts and Rust types at build time.
+
+## Deployed testnet addresses
+
+| Contract | Address | Notes |
+| --- | --- | --- |
+| `vaeltrix_registry` | `CBBZQ577QYKADNBAYBYN56Q3ZDTDQYCBOGREHBFEVOWOI5F27TJBE6MO` | Provider identity, SLA templates, observer set, governance timelock |
+| `vaeltrix_bond` | `CCYLDMTA4CTFF2VHULUCCBNCBMN3G7MA33EZ2OFYMIRSIKX3PYUHCUAI` | USDC stake custody, commitment coverage, exit cooldowns, claim settlement |
+| `vaeltrix_scoreboard` | `CD4TA5VDQUHF2LV5H5LWQSXRUSWTQYZN23MONYYUZQAJ5JBOEGYAP5EC` | Daily Merkle batch anchors, lifetime provider statistics, claim accounting |
+| Test USDC | `CB2CFWENJ2M5JXWBGUOKO75QVIFJ2EY5WOIOHR6FFYTXAKGS2S3XOIM4` | Stellar Asset Contract (SAC) for testnet USDC stake & payouts |
+
+### Testnet accounts
+
+- **Admin:** `GCZL57Q3MFIUMMG2XGSND7XDRYTFIQSFJXMT5AIJIDHQP4WONWWPIQK2`
+- **Observer:** `GBMQHKORPRE7RJR2FUSQZGJLFSSEBSOX4EZHO3N2R4ZRXCQZJ7ZUV35R`
+- **Provider Admin:** `GAXN3KJT36RUDCOFGVUIUAD6IXWHGC5X3RIZQPV6A222GL4YZEYDG5UT`
+- **Verifier:** `GDZTVBIG3R5ZQGPY4LXDM4JSU33NNIDWBE335C7AW7E53HXIV4SS4IXH`
+- **Client:** `GC7QZSFSZSAUFJE5LHWSV25UJTRXN4KHQHEKDX2YK6DDK4FHEQ4DR3XR`
+- **Start ledger:** `5309530`
+
+---
+
+## Registry Contract (vaeltrix_registry)
+
+**Testnet contract address:** `CBBZQ577QYKADNBAYBYN56Q3ZDTDQYCBOGREHBFEVOWOI5F27TJBE6MO`
+**Wasm hash:** `63590fb3533e18870ffb71354d0da91713caeaf9369bff32eadc6bf5e80b5a6b`
+
+Sample testnet deployment on Stellar Protocol 29. Always read addresses and configuration from this page or `deployments/testnet.json` rather than hardcoding literals.
+
+### Functions
+
+#### `__constructor`
+
+```rust
+fn __constructor(env: Env, admin: Address, params: Params) -> Result<(), Error>
+```
+
+#### `register_provider`
+
+```rust
+fn register_provider(env: Env, admin: Address, home_domain: String, signers: Vec<BytesN<32>>, metadata_uri: String,) -> Result<BytesN<32>, Error>
+```
+
+#### `get_provider`
+
+```rust
+fn get_provider(env: Env, id: BytesN<32>) -> Result<vaeltrix_types::Provider, Error>
+```
+
+#### `providers_by_admin`
+
+```rust
+fn providers_by_admin(env: Env, admin: Address) -> Vec<BytesN<32>>
+```
+
+#### `provider_id_for`
+
+```rust
+fn provider_id_for(env: Env, home_domain: String, admin: Address) -> BytesN<32>
+```
+
+#### `update_signers`
+
+```rust
+fn update_signers(env: Env, provider_id: BytesN<32>, signers: Vec<BytesN<32>>,) -> Result<(), Error>
+```
+
+#### `update_metadata`
+
+```rust
+fn update_metadata(env: Env, provider_id: BytesN<32>, metadata_uri: String,) -> Result<(), Error>
+```
+
+#### `verify_domain`
+
+```rust
+fn verify_domain(env: Env, provider_id: BytesN<32>) -> Result<(), Error>
+```
+
+#### `unverify_domain`
+
+```rust
+fn unverify_domain(env: Env, provider_id: BytesN<32>) -> Result<(), Error>
+```
+
+#### `suspend_provider`
+
+```rust
+fn suspend_provider(env: Env, provider_id: BytesN<32>, reason: Symbol,) -> Result<(), Error>
+```
+
+#### `reinstate_provider`
+
+```rust
+fn reinstate_provider(env: Env, provider_id: BytesN<32>) -> Result<(), Error>
+```
+
+#### `propose_template`
+
+```rust
+fn propose_template(env: Env, template: vaeltrix_types::SlaTemplate) -> Result<u32, Error>
+```
+
+#### `activate_template`
+
+```rust
+fn activate_template(env: Env, id: u32, version: u32) -> Result<(), Error>
+```
+
+#### `cancel_template`
+
+```rust
+fn cancel_template(env: Env, id: u32, version: u32) -> Result<(), Error>
+```
+
+#### `deprecate_template`
+
+```rust
+fn deprecate_template(env: Env, id: u32, version: u32) -> Result<(), Error>
+```
+
+#### `get_template`
+
+```rust
+fn get_template(env: Env, id: u32) -> Result<vaeltrix_types::SlaTemplate, Error>
+```
+
+#### `get_template_version`
+
+```rust
+fn get_template_version(env: Env, id: u32, version: u32,) -> Result<vaeltrix_types::SlaTemplate, Error>
+```
+
+#### `template_ids`
+
+```rust
+fn template_ids(env: Env) -> soroban_sdk::Vec<u32>
+```
+
+#### `is_active_observer`
+
+```rust
+fn is_active_observer(env: Env, observer: Address) -> bool
+```
+
+#### `active_observer_count`
+
+```rust
+fn active_observer_count(env: Env) -> Result<u32, Error>
+```
+
+#### `observers`
+
+```rust
+fn observers(env: Env) -> Vec<vaeltrix_types::Observer>
+```
+
+#### `admin`
+
+```rust
+fn admin(env: Env) -> Result<Address, Error>
+```
+
+#### `params`
+
+```rust
+fn params(env: Env) -> Result<Params, Error>
+```
+
+#### `propose_admin`
+
+```rust
+fn propose_admin(env: Env, new_admin: Address) -> Result<(), Error>
+```
+
+#### `accept_admin`
+
+```rust
+fn accept_admin(env: Env) -> Result<(), Error>
+```
+
+#### `propose`
+
+```rust
+fn propose(env: Env, kind: ActionKind) -> Result<u32, Error>
+```
+
+#### `execute`
+
+```rust
+fn execute(env: Env, action_id: u32) -> Result<(), Error>
+```
+
+#### `cancel`
+
+```rust
+fn cancel(env: Env, action_id: u32) -> Result<(), Error>
+```
+
+#### `action`
+
+```rust
+fn action(env: Env, id: u32) -> Result<PendingAction, Error>
+```
+
+
+---
+
+## Bond Contract (vaeltrix_bond)
+
+**Testnet contract address:** `CCYLDMTA4CTFF2VHULUCCBNCBMN3G7MA33EZ2OFYMIRSIKX3PYUHCUAI`
+**Wasm hash:** `cd9fb939919947617475189ccf693b5f43f4bc954e7e8e6d0d1c3fad2baa096c`
+
+Sample testnet deployment on Stellar Protocol 29. Always read addresses and configuration from this page or `deployments/testnet.json` rather than hardcoding literals.
+
+### Functions
+
+#### `__constructor`
+
+```rust
+fn __constructor(env: Env, admin: Address, registry: Address, scoreboard: Address) -> ()
+```
+
+#### `commit`
+
+```rust
+fn commit(env: Env, provider_id: BytesN<32>, template_id: u32, stake_asset: Address, amount: i128, max_volume_per_period: i128, period_secs: u64,) -> Result<u64, Error>
+```
+
+#### `commitment`
+
+```rust
+fn commitment(env: Env, id: u64) -> Result<vaeltrix_types::Commitment, Error>
+```
+
+#### `commitments_by_provider`
+
+```rust
+fn commitments_by_provider(env: Env, provider_id: BytesN<32>) -> soroban_sdk::Vec<u64>
+```
+
+#### `available_stake`
+
+```rust
+fn available_stake(env: Env, id: u64) -> Result<i128, Error>
+```
+
+#### `max_penalty`
+
+```rust
+fn max_penalty(env: Env, id: u64) -> Result<i128, Error>
+```
+
+#### `add_stake`
+
+```rust
+fn add_stake(env: Env, id: u64, amount: i128) -> Result<(), Error>
+```
+
+#### `withdraw_excess`
+
+```rust
+fn withdraw_excess(env: Env, id: u64, amount: i128) -> Result<(), Error>
+```
+
+#### `is_covered`
+
+```rust
+fn is_covered(env: Env, commitment_id: u64, t0_ms: u64) -> Result<bool, Error>
+```
+
+#### `pause`
+
+```rust
+fn pause(env: Env, id: u64) -> Result<(), Error>
+```
+
+#### `resume`
+
+```rust
+fn resume(env: Env, id: u64) -> Result<(), Error>
+```
+
+#### `request_exit`
+
+```rust
+fn request_exit(env: Env, id: u64) -> Result<(), Error>
+```
+
+#### `finalize_exit`
+
+```rust
+fn finalize_exit(env: Env, id: u64) -> Result<(), Error>
+```
+
+#### `admin`
+
+```rust
+fn admin(env: Env) -> Result<Address, Error>
+```
+
+#### `registry`
+
+```rust
+fn registry(env: Env) -> Result<Address, Error>
+```
+
+#### `scoreboard`
+
+```rust
+fn scoreboard(env: Env) -> Result<Address, Error>
+```
+
+#### `propose_upgrade`
+
+```rust
+fn propose_upgrade(env: Env, wasm_hash: BytesN<32>) -> Result<(), Error>
+```
+
+#### `execute_upgrade`
+
+```rust
+fn execute_upgrade(env: Env) -> Result<(), Error>
+```
+
+#### `cancel_upgrade`
+
+```rust
+fn cancel_upgrade(env: Env) -> Result<(), Error>
+```
+
+
+---
+
+## Scoreboard Contract (vaeltrix_scoreboard)
+
+**Testnet contract address:** `CD4TA5VDQUHF2LV5H5LWQSXRUSWTQYZN23MONYYUZQAJ5JBOEGYAP5EC`
+**Wasm hash:** `c522eef5bfdf455eed09a1ec6b937458be2db850ed7284b93547b823b4dee3dc`
+
+Sample testnet deployment on Stellar Protocol 29. Always read addresses and configuration from this page or `deployments/testnet.json` rather than hardcoding literals.
+
+### Functions
+
+#### `__constructor`
+
+```rust
+fn __constructor(env: Env, admin: Address, registry: Address) -> ()
+```
+
+#### `bond`
+
+```rust
+fn bond(env: Env) -> Option<Address>
+```
+
+#### `set_bond`
+
+```rust
+fn set_bond(env: Env, bond: Address) -> Result<(), Error>
+```
+
+#### `anchor_batch`
+
+```rust
+fn anchor_batch(env: Env, observer: Address, commitment_id: u64, provider_id: BytesN<32>, period_start: u64, period_end: u64, merkle_root: BytesN<32>, stats: PeriodStats, attestation_hash: BytesN<32>,) -> Result<(), Error>
+```
+
+#### `record_claim_outcome`
+
+```rust
+fn record_claim_outcome(env: Env, claim: Claim, outcome: ClaimOutcome,) -> Result<(), Error>
+```
+
+#### `lifetime`
+
+```rust
+fn lifetime(env: Env, provider_id: BytesN<32>) -> LifetimeStats
+```
+
+#### `batch`
+
+```rust
+fn batch(env: Env, commitment_id: u64, period: u64) -> Result<BatchRecord, Error>
+```
+
+#### `stats`
+
+```rust
+fn stats(env: Env, commitment_id: u64, period: u64) -> Result<PeriodStats, Error>
+```
+
+#### `periods`
+
+```rust
+fn periods(env: Env, commitment_id: u64) -> Vec<u64>
+```
+
+
+---
+
+## Data model & shared types
+
+Single source of truth from `crates/vaeltrix-types`.
+
+### Structs
+
+#### `Provider`
+
+```rust
+pub id: BytesN<32>
+pub admin: Address
+pub signers: Vec<BytesN<32>>
+pub home_domain: String
+pub metadata_uri: String
+pub verified: bool
+pub status: ProviderStatus
+pub registered_at: u64
+```
+
+#### `Scope`
+
+```rust
+pub asset: Address
+pub direction: Direction
+pub sender_country: Option<Symbol>
+pub receiver_country: Option<Symbol>
+pub min_amount: i128
+pub max_amount: i128
+pub payout_rail: Option<Symbol>
+```
+
+#### `SlaTemplate`
+
+```rust
+pub id: u32
+pub version: u32
+pub metric: Metric
+pub start_event: EventKind
+pub end_event: EventKind
+pub target_ms: u64
+pub grace_ms: u64
+pub penalty: PenaltyModel
+pub scope: Scope
+pub carve_outs: Vec<CarveOut>
+pub max_hold_ms: u64
+pub claim_window_secs: u64
+pub evidence_mode: EvidenceMode
+pub status: TemplateStatus
+pub activates_at: u64
+```
+
+#### `Commitment`
+
+```rust
+pub id: u64
+pub provider_id: BytesN<32>
+pub template_id: u32
+pub template_version: u32
+pub stake_asset: Address
+pub stake_total: i128
+pub stake_reserved: i128
+pub min_stake: i128
+pub max_volume_per_period: i128
+pub period_secs: u64
+pub effective_from: u64
+pub effective_to: Option<u64>
+pub paused_at: Option<u64>
+pub resumed_at: Option<u64>
+pub exit_requested_at: Option<u64>
+pub exit_cooldown_secs: u64
+pub open_claims: u32
+pub status: CommitmentStatus
+```
+
+#### `PaymentRef`
+
+```rust
+pub payment_id: BytesN<32>
+pub sep31_tx_id: String
+pub commitment_id: u64
+pub amount: i128
+pub t0_ms: u64
+pub t1_ms: Option<u64>
+pub pause_ms: u64
+pub evidence_hash: BytesN<32>
+```
+
+#### `CompletionReceipt`
+
+```rust
+pub signer: BytesN<32>
+pub signature: BytesN<64>
+```
+
+#### `Claim`
+
+```rust
+pub id: u64
+pub commitment_id: u64
+pub provider_id: BytesN<32>
+pub payment: PaymentRef
+pub breach: BreachKind
+pub claimant: Address
+pub beneficiary: Address
+pub bond_payer: Address
+pub filed_by_observer: Option<Address>
+pub penalty_amount: i128
+pub reserved_amount: i128
+pub shortfall: i128
+pub claim_bond: i128
+pub status: ClaimStatus
+pub filed_at: u64
+pub challenge_deadline: u64
+pub attestation_deadline: u64
+pub counter_evidence_hash: Option<BytesN<32>>
+pub votes_for: u32
+pub votes_against: u32
+```
+
+#### `Observer`
+
+```rust
+pub address: Address
+pub key: BytesN<32>
+pub active: bool
+pub added_at: u64
+```
+
+#### `Params`
+
+```rust
+pub timelock_secs: u64
+pub challenge_window_secs: u64
+pub attestation_window_secs: u64
+pub exit_extra_secs: u64
+pub quorum: u32
+pub min_claim_bond: i128
+pub claim_bond_bps: u32
+pub rejected_bond_provider_bps: u32
+pub stake_floor: i128
+pub stake_k: u32
+pub max_stake_per_commitment: i128
+pub allowed_stake_assets: Vec<Address>
+```
+
+#### `PeriodStats`
+
+```rust
+pub payments: u32
+pub on_time: u32
+pub breaches: u32
+pub carved_out: u32
+pub p50_ms: u64
+pub p95_ms: u64
+pub p99_ms: u64
+pub volume: i128
+pub penalties_paid: i128
+```
+
+#### `LifetimeStats`
+
+```rust
+pub payments: u64
+pub on_time: u64
+pub breaches: u64
+pub carved_out: u64
+pub volume: i128
+pub penalties_paid: i128
+pub claims_upheld: u32
+pub claims_rejected: u32
+pub claims_expired: u32
+pub shortfall_total: i128
+```
+
+#### `BatchRecord`
+
+```rust
+pub observer: Address
+pub merkle_root: BytesN<32>
+pub attestation_hash: BytesN<32>
+pub stats: PeriodStats
+pub anchored_at: u64
+```
+
+### Enums
+
+#### `ProviderStatus`
+
+```rust
+Active
+Suspended
+Exited
+```
+
+#### `Metric`
+
+```rust
+TimeToCompletion
+```
+
+#### `EventKind`
+
+```rust
+SenderDebitConfirmed
+OnChainSettled
+ReceiverAccepted
+ReceiverCreditConfirmed
+RecipientAcknowledged
+```
+
+#### `Direction`
+
+```rust
+Inbound
+Outbound
+```
+
+#### `CarveOut`
+
+```rust
+ReceiverBankHoliday
+ComplianceHoldDeclared
+InvalidBeneficiary
+SenderInfoIncomplete
+```
+
+#### `EvidenceMode`
+
+```rust
+DualSigned
+ProviderSigned
+ObserverOnly
+```
+
+#### `TemplateStatus`
+
+```rust
+Proposed
+Active
+Deprecated
+```
+
+#### `CommitmentStatus`
+
+```rust
+Active
+Paused
+Exiting
+Exited
+```
+
+#### `ClaimStatus`
+
+```rust
+Filed
+Challenged
+Paid
+Rejected
+Expired
+```
+
+#### `BreachKind`
+
+```rust
+LateCompletion
+NoCompletion
+```
+
+#### `ClaimOutcome`
+
+```rust
+Upheld
+Rejected
+Expired
+```
+
+#### `PenaltyModel`
+
+```rust
+PerBreachBps(PerBreachBps)
+```
+
+---
+
+## Contract error codes
+
+Frozen `#[contracterror]` codes from `crates/vaeltrix-types/src/errors.rs`. Returned on contract failure with explicit numeric tags.
+
+| Code | Name | Description |
+| --- | --- | --- |
+| 1 | `NotAuthorized` | Caller lacks authorization or required signature from admin, observer, or bond authority. |
+| 2 | `ProviderNotActive` | Provider status is suspended or exited; operations on this provider are disallowed. |
+| 3 | `TemplateNotActive` | SLA template is proposed or deprecated, not currently in active state. |
+| 4 | `InsufficientStake` | Commitment does not have enough unreserved stake to cover penalty or minimum stake. |
+| 5 | `OutOfScope` | Payment amount, asset, direction, or corridor is outside the template scope. |
+| 6 | `ClaimWindowClosed` | Claim filed after the template claim window has elapsed. |
+| 7 | `DuplicateClaim` | A claim for this payment ID has already been recorded; duplicate filing rejected. |
+| 8 | `InvalidEvidence` | Pause duration exceeds maximum hold duration, or evidence hash is invalid. |
+| 9 | `NotInBreach` | Payment completed within target plus grace duration; no SLA breach occurred. |
+| 10 | `ChallengeWindowOpen` | Attempted action before the challenge window has closed. |
+| 11 | `OpenClaimsExist` | Commitment exit or excess withdrawal blocked while open claims remain unresolved. |
+| 12 | `CooldownActive` | Exit cooldown period has not yet expired. |
+| 13 | `UnknownObserver` | Observer address is not in the active observer registry. |
+| 14 | `AlreadyAttested` | Observer has already cast an attestation vote on this claim. |
+| 15 | `AlreadyInitialized` | Contract has already been initialized via constructor. |
+| 16 | `NotInitialized` | Contract has not been initialized with required parameters. |
+| 17 | `InvalidParams` | Parameters fail validation bounds (quorum, windows, fee bps, asset caps, etc.). |
+| 18 | `UnknownProvider` | Provider ID does not exist in the registry. |
+| 19 | `UnknownTemplate` | Template ID does not exist in the registry. |
+| 20 | `UnknownCommitment` | Commitment ID does not exist in the bond contract. |
+| 21 | `UnknownClaim` | Claim ID does not exist. |
+| 22 | `ProviderNotVerified` | Provider home domain has not been verified by the designated verifier. |
+| 23 | `ProviderExists` | Provider already registered for this domain and admin combination. |
+| 24 | `TemplateExists` | Template version already exists. |
+| 25 | `TimelockActive` | Governance action timelock has not expired; action is still pending. |
+| 26 | `AssetNotAllowed` | Stake asset is not in the registry allowed stake assets list. |
+| 27 | `AssetMismatch` | Stake asset does not match the template scope asset. |
+| 28 | `AmountOutOfRange` | Amount is below minimum stake floor or exceeds allowable thresholds. |
+| 29 | `NotCovered` | Payment initiation timestamp (t0) falls outside active commitment coverage period. |
+| 30 | `CommitmentNotActive` | Commitment is not active (paused, exiting, or exited). |
+| 31 | `ClaimNotOpen` | Claim status is not Filed or Challenged. |
+| 32 | `AttestationWindowClosed` | Observer attestation window has expired. |
+| 33 | `QuorumNotReached` | Quorum not reached among observer attestations. |
+| 34 | `BelowMinStake` | Stake reduction or commitment amount falls below required minimum stake floor. |
+| 35 | `StakeCapExceeded` | Total stake exceeds maximum allowed stake per commitment. |
+| 36 | `PaymentIdMismatch` | Derived payment ID does not match the provided payment ID. |
+| 37 | `UnknownSigner` | Signer is not in the provider registered signer set. |
+| 38 | `TooManySigners` | Signer list length exceeds maximum permitted count. |
+| 39 | `UnsupportedPenaltyModel` | Specified penalty calculation model is not supported. |
+| 40 | `ArithmeticOverflow` | Math overflow or underflow detected in checked arithmetic operation. |
+| 41 | `BondAlreadySet` | Bond contract address has already been set on the scoreboard. |
+| 42 | `BatchExists` | Daily metrics batch for this commitment and period has already been anchored. |
+| 43 | `InvalidPeriod` | Period start/end is not a multiple of 86400, length is not 86400s, or is in the future. |
+| 44 | `NothingPending` | No pending governance action or admin transition found with the specified ID. |
