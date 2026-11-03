@@ -38,6 +38,25 @@ export interface CommittedEvent {
 }
 
 /**
+ * Event: ClaimFiled
+ */
+export interface ClaimFiledEvent {
+  name: "ClaimFiled";
+  data: {
+    claim_id: bigint;
+    commitment_id?: bigint;
+    payment_id?: Uint8Array;
+    breach?: BreachKind;
+    penalty?: bigint;
+    reserved?: bigint;
+    shortfall?: bigint;
+    bond?: bigint;
+    claimant?: string;
+    beneficiary?: string;
+  };
+}
+
+/**
  * Event: StakeChanged
  */
 export interface StakeChangedEvent {
@@ -46,6 +65,32 @@ export interface StakeChangedEvent {
     commitment_id: bigint;
     delta?: bigint;
     new_total?: bigint;
+  };
+}
+
+/**
+ * Event: ClaimAttested
+ */
+export interface ClaimAttestedEvent {
+  name: "ClaimAttested";
+  data: {
+    claim_id: bigint;
+    observer?: string;
+    uphold?: boolean;
+    attestation_hash?: Uint8Array;
+  };
+}
+
+/**
+ * Event: ClaimResolved
+ */
+export interface ClaimResolvedEvent {
+  name: "ClaimResolved";
+  data: {
+    claim_id: bigint;
+    outcome?: ClaimOutcome;
+    amount_paid?: bigint;
+    bond_refunded?: boolean;
   };
 }
 
@@ -73,6 +118,18 @@ export interface ExitRequestedEvent {
 }
 
 /**
+ * Event: ClaimChallenged
+ */
+export interface ClaimChallengedEvent {
+  name: "ClaimChallenged";
+  data: {
+    claim_id: bigint;
+    counter_evidence_hash?: Uint8Array;
+    attestation_deadline?: bigint;
+  };
+}
+
+/**
  * Event: UpgradeExecuted
  */
 export interface UpgradeExecutedEvent {
@@ -91,6 +148,31 @@ export interface UpgradeProposedEvent {
     wasm_hash?: Uint8Array;
   };
 }
+
+/**
+ * Union: BreachKind
+ */
+ export type BreachKind =
+  { tag: "LateCompletion"; values: void } |
+  { tag: "NoCompletion"; values: void };
+
+/**
+ * Union: ClaimStatus
+ */
+ export type ClaimStatus =
+  { tag: "Filed"; values: void } |
+  { tag: "Challenged"; values: void } |
+  { tag: "Paid"; values: void } |
+  { tag: "Rejected"; values: void } |
+  { tag: "Expired"; values: void };
+
+/**
+ * Union: ClaimOutcome
+ */
+ export type ClaimOutcome =
+  { tag: "Upheld"; values: void } |
+  { tag: "Rejected"; values: void } |
+  { tag: "Expired"; values: void };
 
 /**
  * Union: CommitmentStatus
@@ -152,6 +234,32 @@ export const Error = {
 }
 
 /**
+ * Struct: Claim
+ */
+export interface Claim {
+  attestation_deadline: bigint;
+  beneficiary: string;
+  bond_payer: string;
+  breach: BreachKind;
+  challenge_deadline: bigint;
+  claim_bond: bigint;
+  claimant: string;
+  commitment_id: bigint;
+  counter_evidence_hash: Uint8Array | null;
+  filed_at: bigint;
+  filed_by_observer: string | null;
+  id: bigint;
+  payment: PaymentRef;
+  penalty_amount: bigint;
+  provider_id: Uint8Array;
+  reserved_amount: bigint;
+  shortfall: bigint;
+  status: ClaimStatus;
+  votes_against: number;
+  votes_for: number;
+}
+
+/**
  * Struct: Commitment
  */
 export interface Commitment {
@@ -174,5 +282,27 @@ export interface Commitment {
   template_id: number;
   template_version: number;
 }
-    export type ContractEvent = PausedEvent | ResumedEvent | CommittedEvent | StakeChangedEvent | ExitFinalizedEvent | ExitRequestedEvent | UpgradeExecutedEvent | UpgradeProposedEvent;
+
+/**
+ * Struct: PaymentRef
+ */
+export interface PaymentRef {
+  amount: bigint;
+  commitment_id: bigint;
+  evidence_hash: Uint8Array;
+  pause_ms: bigint;
+  payment_id: Uint8Array;
+  sep31_tx_id: string;
+  t0_ms: bigint;
+  t1_ms: bigint | null;
+}
+
+/**
+ * Struct: CompletionReceipt
+ */
+export interface CompletionReceipt {
+  signature: Uint8Array;
+  signer: Uint8Array;
+}
+    export type ContractEvent = PausedEvent | ResumedEvent | CommittedEvent | ClaimFiledEvent | StakeChangedEvent | ClaimAttestedEvent | ClaimResolvedEvent | ExitFinalizedEvent | ExitRequestedEvent | ClaimChallengedEvent | UpgradeExecutedEvent | UpgradeProposedEvent;
     

@@ -13,3 +13,13 @@ export function contractViews(
     scoreboard.lifetime({ provider_id: new Uint8Array(32) }),
   ];
 }
+
+/** Keep the newly implemented claim entry points in the SDK's compile contract. */
+export function claimLifecycle(bond: BondClient, observer: string) {
+  return [
+    bond.challenge({ claim_id: 1n, counter_evidence_hash: new Uint8Array(32) }),
+    bond.attest({ observer, claim_id: 1n, uphold: true, attestation_hash: new Uint8Array(32) }),
+    bond.resolve({ claim_id: 1n }),
+    bond.claim_votes({ id: 1n }),
+  ];
+}
