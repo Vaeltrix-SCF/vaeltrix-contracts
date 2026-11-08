@@ -18,8 +18,8 @@
     "@fontsource/ibm-plex-mono": "^5.2.7"
   },
   "devDependencies": {
-    "vite": "8.3.4",
-    "@vitejs/plugin-react": "6.1.2",
+    "vite": "8.3.6",
+    "@vitejs/plugin-react": "6.2.1",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0"
   }
