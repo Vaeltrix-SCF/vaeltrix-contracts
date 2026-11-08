@@ -28,7 +28,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v2
 
       # Action version == CLI version. Keep in step with docs/toolchain.md.
-      - uses: stellar/stellar-cli@v28.1.0
+      - uses: stellar/stellar-cli@v30.0.1
 
       - name: cargo fmt
         run: cargo fmt --all --check
