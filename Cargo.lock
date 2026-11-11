@@ -2171,6 +2171,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vaeltrix-merkle-reference"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "vaeltrix-registry"
 version = "0.1.0"
 dependencies = [

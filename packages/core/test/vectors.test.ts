@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Ajv } from "ajv";
 import { describe, expect, it } from "vitest";
+import { merkleRoot, type MerkleRecord } from "../src/merkle.js";
 
 // VX-105 owns fixtures and their integrity. VX-103/VX-104/VX-106 add
 // assertions against the production implementations, using these same files.
@@ -107,4 +108,30 @@ describe("shared test vectors", () => {
       expect(verify(null, tampered, publicKey, signature)).toBe(false);
     });
   }
+});
+
+type MerkleVectorRecord = Omit<MerkleRecord, "t0_ms" | "t1_ms" | "pause_ms"> & {
+  t0_ms: number;
+  t1_ms: number | null;
+  pause_ms: number;
+};
+
+describe("shared Merkle roots", () => {
+  const cases = load("merkle.json") as {
+    name: string;
+    records: MerkleVectorRecord[];
+    root: string;
+  }[];
+  it.each(cases)("$name", ({ records, root }) => {
+    expect(
+      merkleRoot(
+        records.map((record) => ({
+          ...record,
+          t0_ms: BigInt(record.t0_ms),
+          t1_ms: record.t1_ms === null ? null : BigInt(record.t1_ms),
+          pause_ms: BigInt(record.pause_ms),
+        })),
+      ),
+    ).toBe(root);
+  });
 });

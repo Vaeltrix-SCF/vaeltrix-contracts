@@ -109,7 +109,7 @@ jobs:
 
       # Both suites load test-vectors/*.json; either disagreeing fails the job.
       - name: Rust vector suites
-        run: cargo test -p vaeltrix-verdict -p vaeltrix-types --test vectors
+        run: cargo test -p vaeltrix-verdict -p vaeltrix-types -p vaeltrix-merkle-reference --test vectors
 
       - name: TypeScript vector suite
         run: pnpm exec vitest run packages/core/test/vectors.test.ts packages/core/test/primitives.test.ts
