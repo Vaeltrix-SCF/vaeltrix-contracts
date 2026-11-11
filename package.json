@@ -14,6 +14,7 @@
     "contracts:lint": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings",
     "deploy:testnet": "tsx scripts/deploy.ts --network testnet",
     "seed:testnet": "tsx scripts/seed.ts --network testnet",
+    "verify:domain": "tsx scripts/verify-domain.ts",
     "smoke:testnet": "tsx scripts/smoke.ts --network testnet",
     "bindings": "bash scripts/bindings.sh testnet",
     "dev": "docker compose up -d postgres && pnpm --parallel --filter \"./services/*\" dev",
