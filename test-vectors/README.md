@@ -67,3 +67,10 @@ zero daily cap, adjacent spans and u64 boundaries. Five manual arithmetic checks
 
 For the five-observer split, the same 51-stroop remainder gives 10 each and one
 stroop of dust to the provider; the provider receives 50 + 1 in total.
+
+## VX-402 Merkle roots
+
+`merkle.json` is shared by the Rust reference crate and the TypeScript core
+suite. Each case has `name`, `records` (the §7.4 leaf records), and `root`
+(the expected 32 bytes as lowercase hex). The cases pin the empty root,
+canonical record encoding, bytewise sorting, and odd node promotion.
