@@ -90,6 +90,16 @@ impl Bond {
         touch(&env);
         claims::by_payment(&env, payment_id)
     }
+    /// Permissionless keeper call for an existing commitment.
+    pub fn extend_commitment_ttl(env: Env, id: u64) -> Result<(), Error> {
+        touch(&env);
+        storage::commitment(&env, id).map(|_| ())
+    }
+    /// Permissionless keeper call. Resolved claims are not extended again.
+    pub fn extend_claim_ttl(env: Env, id: u64) -> Result<(), Error> {
+        touch(&env);
+        claims::claim(&env, id).map(|_| ())
+    }
     pub fn commitment(env: Env, id: u64) -> Result<vaeltrix_types::Commitment, Error> {
         touch(&env);
         storage::commitment(&env, id)
@@ -212,3 +222,6 @@ mod resolve_test;
 mod test;
 #[cfg(test)]
 mod testutils;
+
+#[cfg(test)]
+mod ttl_test;

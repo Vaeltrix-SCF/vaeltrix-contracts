@@ -3,22 +3,38 @@ use crate::{DataKey, coverage, events, stake, storage};
 use soroban_sdk::{Address, BytesN, Env, token};
 use vaeltrix_types::{
     BreachKind, Claim, ClaimStatus, CommitmentStatus, CompletionReceipt, Error, MAX_PAUSE_MS,
-    PaymentRef, PenaltyModel,
+    PaymentRef, PenaltyModel, RESOLVED_CLAIM_BUMP,
 };
-pub fn claim(env: &Env, id: u64) -> Result<Claim, Error> {
-    let key = DataKey::Claim(id);
-    let value = env
-        .storage()
+pub fn load_claim(env: &Env, id: u64) -> Result<Claim, Error> {
+    env.storage()
         .persistent()
-        .get(&key)
-        .ok_or(Error::UnknownClaim)?;
-    storage::touch_key(env, &key);
+        .get(&DataKey::Claim(id))
+        .ok_or(Error::UnknownClaim)
+}
+
+fn is_open(status: &ClaimStatus) -> bool {
+    matches!(status, ClaimStatus::Filed | ClaimStatus::Challenged)
+}
+
+pub fn claim(env: &Env, id: u64) -> Result<Claim, Error> {
+    let value = load_claim(env, id)?;
+    if is_open(&value.status) {
+        storage::touch_key(env, &DataKey::Claim(id));
+    }
     Ok(value)
 }
+
 pub fn put_claim(env: &Env, value: &Claim) {
     let key = DataKey::Claim(value.id);
     env.storage().persistent().set(&key, value);
-    storage::touch_key(env, &key);
+    if is_open(&value.status) {
+        storage::touch_key(env, &key);
+    } else {
+        // Soroban can extend existing TTL, but cannot shorten it.
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, RESOLVED_CLAIM_BUMP, RESOLVED_CLAIM_BUMP);
+    }
 }
 pub fn by_payment(env: &Env, payment_id: BytesN<32>) -> Option<u64> {
     let key = DataKey::ClaimByPayment(payment_id);
