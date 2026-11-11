@@ -145,7 +145,6 @@ fn file_claim_requires_exactly_one_path() {
     for (o, r) in [
         (None, None),
         (Some(w.observer.clone()), Some(w.receipt(&p))),
-        (None, Some(w.receipt(&p))),
     ] {
         assert_eq!(
             w.bond.try_file_claim(&w.client, &w.client, &p, &o, &r),
@@ -271,4 +270,109 @@ fn bond_transfer_failure_rolls_back_claim_and_reservation() {
     );
     assert_eq!(w.bond.claim_by_payment(&p.payment_id), None);
     w.assert_invariants();
+}
+
+#[test]
+fn file_claim_path_b_valid_receipt() {
+    let (w, p) = fixture();
+    let receipt = Some(w.receipt(&p));
+    let balance = w.usdc_token.balance(&w.client);
+    let id = w.bond.file_claim(&w.client, &w.client, &p, &None, &receipt);
+    let claim = w.bond.claim(&id);
+    assert_eq!(claim.filed_by_observer, None);
+    assert_eq!(claim.bond_payer, w.client);
+    assert_eq!(claim.penalty_amount, 50_000_000);
+    assert_eq!(w.usdc_token.balance(&w.client), balance - claim.claim_bond);
+    assert_eq!(w.bond.claim_by_payment(&p.payment_id), Some(id));
+    w.assert_invariants();
+}
+
+#[test]
+fn file_claim_path_b_wrong_signer() {
+    let (w, p) = fixture();
+    let mut receipt = w.receipt(&p);
+    receipt.signer = BytesN::from_array(&w.env, &[0; 32]);
+    assert_eq!(
+        w.bond
+            .try_file_claim(&w.client, &w.client, &p, &None, &Some(receipt)),
+        Err(Ok(Error::UnknownSigner))
+    );
+    assert_eq!(w.bond.claim_by_payment(&p.payment_id), None);
+    w.assert_invariants();
+}
+
+#[test]
+fn file_claim_path_b_tampered_amount() {
+    let (w, mut p) = fixture();
+    let receipt = w.receipt(&p);
+    let balance = w.usdc_token.balance(&w.client);
+    p.amount += 1;
+    let result = w
+        .bond
+        .try_file_claim(&w.client, &w.client, &p, &None, &Some(receipt));
+    assert!(matches!(result, Err(Err(_))), "{result:?}");
+    assert_eq!(w.usdc_token.balance(&w.client), balance);
+    assert_eq!(w.bond.claim_by_payment(&p.payment_id), None);
+    w.assert_invariants();
+}
+
+#[test]
+fn file_claim_path_b_requires_completion() {
+    let (w, mut p) = fixture();
+    let receipt = w.receipt(&p);
+    p.t1_ms = None;
+    assert_eq!(
+        w.bond
+            .try_file_claim(&w.client, &w.client, &p, &None, &Some(receipt)),
+        Err(Ok(Error::NotInBreach))
+    );
+    assert_eq!(w.bond.claim_by_payment(&p.payment_id), None);
+    w.assert_invariants();
+}
+
+#[test]
+fn receipt_message_matches_shared_vectors() {
+    use soroban_sdk::{Env, String};
+
+    fn bytes<const N: usize>(text: &str) -> [u8; N] {
+        assert_eq!(text.len(), N * 2);
+        core::array::from_fn(|i| u8::from_str_radix(&text[2 * i..2 * i + 2], 16).unwrap())
+    }
+
+    let vectors: serde_json::Value =
+        serde_json::from_str(include_str!("../../../test-vectors/receipts.json")).unwrap();
+    let cases = vectors.as_array().unwrap();
+    assert!(cases.len() >= 3);
+    for case in cases {
+        let field = |name: &str| case["input"][name].as_str().unwrap();
+        let env = Env::default();
+        env.ledger().set_network_id(bytes(field("network_id")));
+        let t1 = field("t1_ms").parse().unwrap();
+        let payment = PaymentRef {
+            payment_id: BytesN::from_array(&env, &bytes(field("payment_id"))),
+            sep31_tx_id: String::from_str(&env, ""),
+            commitment_id: field("commitment_id").parse().unwrap(),
+            amount: field("amount").parse().unwrap(),
+            t0_ms: field("t0_ms").parse().unwrap(),
+            t1_ms: Some(t1),
+            pause_ms: field("pause_ms").parse().unwrap(),
+            evidence_hash: BytesN::from_array(&env, &[0; 32]),
+        };
+        let message = crate::claims::receipt_message(&env, &payment, t1);
+        assert_eq!(message.len(), 131);
+        let mut actual = [0; 131];
+        message.copy_into_slice(&mut actual);
+        assert_eq!(
+            actual,
+            bytes(case["expect"]["message_hex"].as_str().unwrap())
+        );
+        env.crypto().ed25519_verify(
+            &BytesN::from_array(&env, &bytes(case["expect"]["signer_hex"].as_str().unwrap())),
+            &message,
+            &BytesN::from_array(
+                &env,
+                &bytes(case["expect"]["signature_hex"].as_str().unwrap()),
+            ),
+        );
+    }
 }
