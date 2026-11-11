@@ -1,6 +1,6 @@
-//! Observer-attested filing (VX-305, guide §6.6). Path B is VX-308 (#23).
+//! Observer-attested and provider-signed filing (VX-305 and VX-308, guide §6.6).
 use crate::{DataKey, coverage, events, stake, storage};
-use soroban_sdk::{Address, BytesN, Env, token};
+use soroban_sdk::{Address, Bytes, BytesN, Env, token};
 use vaeltrix_types::{
     BreachKind, Claim, ClaimStatus, CommitmentStatus, CompletionReceipt, Error, MAX_PAUSE_MS,
     PaymentRef, PenaltyModel, RESOLVED_CLAIM_BUMP,
@@ -44,6 +44,22 @@ pub fn by_payment(env: &Env, payment_id: BytesN<32>) -> Option<u64> {
     }
     value
 }
+/// Guide §4.4: the provider signs these bytes directly, without a prehash.
+pub(crate) fn receipt_message(env: &Env, payment: &PaymentRef, t1_ms: u64) -> Bytes {
+    let mut message = Bytes::from_slice(env, b"VAELTRIX:RECEIPT:v1");
+    message.append(&Bytes::from(env.ledger().network_id()));
+    message.append(&Bytes::from(payment.payment_id.clone()));
+    message.append(&Bytes::from_slice(
+        env,
+        &payment.commitment_id.to_be_bytes(),
+    ));
+    message.append(&Bytes::from_slice(env, &payment.amount.to_be_bytes()));
+    message.append(&Bytes::from_slice(env, &payment.t0_ms.to_be_bytes()));
+    message.append(&Bytes::from_slice(env, &t1_ms.to_be_bytes()));
+    message.append(&Bytes::from_slice(env, &payment.pause_ms.to_be_bytes()));
+    message
+}
+
 pub fn file(
     env: &Env,
     claimant: Address,
@@ -56,18 +72,21 @@ pub fn file(
     if observer.is_some() == receipt.is_some() {
         return Err(Error::InvalidEvidence);
     }
-    let observer_address = observer.as_ref().ok_or(Error::InvalidEvidence)?;
     // One authorization covers both roles for delegated filing (§6.6 step 3).
-    if observer_address != &claimant {
+    if let Some(observer_address) = observer.as_ref()
+        && observer_address != &claimant
+    {
         observer_address.require_auth();
     }
     storage::touch(env);
     let registry = stake::registry(env)?;
-    if !registry.is_active_observer(observer_address) {
+    if let Some(observer_address) = observer.as_ref()
+        && !registry.is_active_observer(observer_address)
+    {
         return Err(Error::UnknownObserver);
     }
     let mut c = storage::commitment(env, payment.commitment_id)?;
-    let _provider = registry.get_provider(&c.provider_id);
+    let provider = registry.get_provider(&c.provider_id);
     let template = registry.get_template_version(&c.template_id, &c.template_version);
     if payment.payment_id != vaeltrix_types::payment_id(env, &payment.sep31_tx_id, &c.provider_id) {
         return Err(Error::PaymentIdMismatch);
@@ -97,9 +116,18 @@ pub fn file(
     .ok_or(Error::InvalidEvidence)?;
     let breach = match verdict {
         vaeltrix_verdict::Verdict::Late { .. } => BreachKind::LateCompletion,
-        vaeltrix_verdict::Verdict::NoCompletion => BreachKind::NoCompletion,
+        vaeltrix_verdict::Verdict::NoCompletion if receipt.is_none() => BreachKind::NoCompletion,
         _ => return Err(Error::NotInBreach),
     };
+    if let Some(receipt) = receipt {
+        if !provider.signers.contains(&receipt.signer) {
+            return Err(Error::UnknownSigner);
+        }
+        let t1_ms = payment.t1_ms.ok_or(Error::NotInBreach)?;
+        let message = receipt_message(env, &payment, t1_ms);
+        env.crypto()
+            .ed25519_verify(&receipt.signer, &message, &receipt.signature);
+    }
     let deadline = vaeltrix_verdict::deadline_ms(
         payment.t0_ms,
         template.target_ms,
