@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^17.2.1",
+    "@vaeltrix/bindings-bond": "workspace:*",
+    "@vaeltrix/bindings-registry": "workspace:*",
     "@vaeltrix/core": "workspace:*",
     "fastify": "^5.12.7",
     "kysely": "^0.29.7",

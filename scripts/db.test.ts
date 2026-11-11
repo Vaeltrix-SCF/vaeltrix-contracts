@@ -42,6 +42,10 @@ describe.skipIf(!url)("Postgres migrations", () => {
       join(migrationsDir, "0002_api_readonly.sql"),
       join(directory, "0002_api_readonly.sql"),
     );
+    await copyFile(
+      join(migrationsDir, "0003_indexer_projections.sql"),
+      join(directory, "0003_indexer_projections.sql"),
+    );
     client = new pg.Client({ connectionString: url });
     await client.connect();
   });
@@ -61,6 +65,7 @@ describe.skipIf(!url)("Postgres migrations", () => {
     expect((await client.query("select name from schema_migrations")).rows).toEqual([
       { name: "0001_core.sql" },
       { name: "0002_api_readonly.sql" },
+      { name: "0003_indexer_projections.sql" },
     ]);
     const tables = await client.query(
       "select tablename from pg_tables where schemaname = 'public'",
@@ -76,6 +81,7 @@ describe.skipIf(!url)("Postgres migrations", () => {
       "delegations",
       "evidence_bundles",
       "observer_jobs",
+      "observers",
       "payments",
       "providers",
       "schema_migrations",
@@ -131,15 +137,15 @@ describe.skipIf(!url)("Postgres migrations", () => {
   it("rolls back failed migration SQL and its history", async () => {
     if (!url) throw new Error("DATABASE_TEST_URL required");
     await writeFile(
-      join(directory, "0003_bad.sql"),
+      join(directory, "0004_bad.sql"),
       "create table rollback_probe (id int); select nonexistent_column;",
     );
     await expect(migrate(url, "migrate", directory)).rejects.toThrow();
     expect(
       (await client.query("select to_regclass('rollback_probe') as probe")).rows[0].probe,
     ).toBeNull();
-    expect((await client.query("select count(*) from schema_migrations")).rows[0].count).toBe("2");
-    await rm(join(directory, "0003_bad.sql"));
+    expect((await client.query("select count(*) from schema_migrations")).rows[0].count).toBe("3");
+    await rm(join(directory, "0004_bad.sql"));
   });
 
   it("rejects edits to already applied migrations", async () => {
