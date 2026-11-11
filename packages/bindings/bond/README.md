@@ -1,7 +1,40 @@
-# @vaeltrix/bindings-bond
+# vaeltrix-bindings-bond Contract Bindings
 
-Generated TypeScript client for `vaeltrix_bond`. **Never hand-edit.** Regenerate with `pnpm bindings` after any contract interface change and commit the output (guide §10.5, VX-504).
+TypeScript bindings for the vaeltrix-bindings-bond Stellar smart contract.
 
-Generated with the `stellar-js generate` command from `@stellar/stellar-sdk`, which replaces the deprecated `stellar contract bindings typescript` (see `docs/toolchain.md`).
+## Installation
 
-This folder becomes a workspace package once the generator writes its `package.json`.
+```bash
+npm install
+```
+
+## Build
+
+```bash
+npm run build
+```
+
+## Usage
+
+```typescript
+import { Client } from "./src";
+
+const client = new Client({
+  contractId: "YOUR_CONTRACT_ID",
+  rpcUrl: "https://soroban-testnet.stellar.org:443",
+  networkPassphrase: "Test SDF Network ; September 2015",
+});
+
+// Call contract methods
+// const result = await client.methodName();
+```
+
+## Generated Files
+
+- `src/index.ts` - Entry point exporting the Client
+- `src/types.ts` - Type definitions for contract structs, enums, and unions
+- `src/contract.ts` - Client implementation
+- `tsconfig.json` - TypeScript configuration
+- `package.json` - NPM package configuration
+
+This package was generated using the Js-Stellar-SDK contract binding generator.
