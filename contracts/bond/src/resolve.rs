@@ -4,7 +4,8 @@ use soroban_sdk::{Env, token};
 use vaeltrix_types::{ClaimOutcome, ClaimStatus, Error, ScoreboardClient};
 pub fn resolve(env: &Env, id: u64) -> Result<(), Error> {
     storage::touch(env);
-    let mut claim = claims::claim(env, id)?;
+    // Apply only the terminal TTL on a successful settlement.
+    let mut claim = claims::load_claim(env, id)?;
     let now = env.ledger().timestamp();
     let registry = stake::registry(env)?;
     let params = registry.params();
