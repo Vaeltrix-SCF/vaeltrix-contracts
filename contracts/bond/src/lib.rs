@@ -213,6 +213,8 @@ impl Bond {
     }
 }
 #[cfg(test)]
+mod auth_test;
+#[cfg(test)]
 mod claim_test;
 #[cfg(test)]
 mod dispute_test;
