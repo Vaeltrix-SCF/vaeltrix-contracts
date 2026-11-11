@@ -2,11 +2,14 @@
 import { readFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
+import { Client as BondClient } from "@vaeltrix/bindings-bond";
+import { Client as RegistryClient } from "@vaeltrix/bindings-registry";
 import { Networks, rpc, StrKey } from "@stellar/stellar-sdk";
 import Fastify from "fastify";
 import pg from "pg";
 import { z } from "zod";
 import { pollOnce, RetentionGap } from "./ingest.js";
+import { createProjector } from "./projections.js";
 
 const testnetRpc = "https://soroban-testnet.stellar.org";
 const contractId = z.string().refine((value) => StrKey.isValidContract(value));
@@ -42,6 +45,18 @@ export async function main(): Promise<void> {
   });
   const server = new rpc.Server(config.rpcUrl, { timeout: 10_000 });
   const app = Fastify({ logger: true });
+  const options = { rpcUrl: config.rpcUrl, networkPassphrase: Networks.TESTNET, server };
+  const registry = new RegistryClient({ ...options, contractId: config.contracts.registry });
+  const bond = new BondClient({ ...options, contractId: config.contracts.bond });
+  const project = createProjector(
+    {
+      provider: async (id) => (await registry.get_provider({ id })).result.unwrap(),
+      template: async (id, version) =>
+        (await registry.get_template_version({ id, version })).result.unwrap(),
+      claim: async (id) => (await bond.claim({ id })).result.unwrap(),
+    },
+    ({ contract, topic }) => app.log.warn({ contract, topic }, "Stored unknown contract event"),
+  );
   const stop = new AbortController();
   const shutdown = () => stop.abort();
   process.once("SIGINT", shutdown);
@@ -63,7 +78,7 @@ export async function main(): Promise<void> {
     await app.listen({ host: "0.0.0.0", port: env.data.INDEXER_PORT });
     while (!stop.signal.aborted) {
       try {
-        const count = await pollOnce(pool, server, config.contracts, config.startLedger);
+        const count = await pollOnce(pool, server, config.contracts, config.startLedger, project);
         status = "ok";
         if (count > 0) continue;
       } catch (error) {

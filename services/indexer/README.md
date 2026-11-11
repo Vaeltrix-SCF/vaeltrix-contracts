@@ -12,8 +12,9 @@ to use a different Testnet deployment, with a separate database for each deploym
 Each page and its opaque RPC cursor are stored in the same Postgres transaction.
 After restart, the indexer resumes from `indexer:events`. It rejects expired
 checkpoints and reports `reconcile_required` without dropping events or resetting
-the cursor. Projection handlers (VX-702, #52) and reconciliation (VX-703, #53)
-are separate issues; the event rows are retained for replay.
+the cursor. Projection handlers update the database before the checkpoint advances.
+Previously saved events are replayed in order before polling new pages. Unknown
+topics are kept in the event log. Storage reconciliation is tracked by VX-703 (#53).
 
 The Postgres integration suite replays XDR events from the
 [Stellar getEvents reference](https://developers.stellar.org/docs/data/apis/rpc/api-reference/methods/getEvents).
