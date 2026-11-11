@@ -37,6 +37,8 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: cargo test
+        env:
+          PROPTEST_CASES: "1000"
         run: cargo test --workspace
 
       - name: stellar contract build
