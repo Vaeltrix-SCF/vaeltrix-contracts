@@ -21,8 +21,11 @@ export class Client extends ContractClient {
     );
   }
 
-   static deploy<T = Client>(args: { admin: string | Address; registry: string | Address }, options: MethodOptions & Omit<ContractClientOptions, 'contractId'> & { salt?: Uint8Array; address?: string; } & ({ wasmHash: Uint8Array | string; format?: "hex" | "base64"; externalRef?: never; } | { externalRef: ExternalExecutableRef; wasmHash?: never; format?: never; })): Promise<AssembledTransaction<T>> {
-    return ContractClient.deploy(args, options);
+   static async deploy<T = Client>(args: { admin: string | Address; registry: string | Address }, options: MethodOptions & Omit<ContractClientOptions, 'contractId'> & { salt?: Uint8Array; address?: string; } & ({ wasmHash: Uint8Array | string; format?: "hex" | "base64"; externalRef?: never; } | { externalRef: ExternalExecutableRef; wasmHash?: never; format?: never; })): Promise<AssembledTransaction<T>> {
+    const tx = await ContractClient.deploy<T & ContractClient>(args, options);
+    const parse = tx.options.parseResultXdr;
+    tx.options.parseResultXdr = (result) => new Client(parse(result).options) as T & Client;
+    return tx;
   }
   public readonly fromJson = {
     bond : this.txFromJson<string | null>,  batch : this.txFromJson<Result<BatchRecord, Error>>,  stats : this.txFromJson<Result<PeriodStats, Error>>,  periods : this.txFromJson<Array<bigint>>,  lifetime : this.txFromJson<LifetimeStats>,  set_bond : this.txFromJson<Result<null, Error>>,  anchor_batch : this.txFromJson<Result<null, Error>>,  record_claim_outcome : this.txFromJson<Result<null, Error>>

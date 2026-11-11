@@ -38,8 +38,11 @@ export class Client extends ContractClient {
     );
   }
 
-   static deploy<T = Client>(args: { admin: string | Address; registry: string | Address; scoreboard: string | Address }, options: MethodOptions & Omit<ContractClientOptions, 'contractId'> & { salt?: Uint8Array; address?: string; } & ({ wasmHash: Uint8Array | string; format?: "hex" | "base64"; externalRef?: never; } | { externalRef: ExternalExecutableRef; wasmHash?: never; format?: never; })): Promise<AssembledTransaction<T>> {
-    return ContractClient.deploy(args, options);
+   static async deploy<T = Client>(args: { admin: string | Address; registry: string | Address; scoreboard: string | Address }, options: MethodOptions & Omit<ContractClientOptions, 'contractId'> & { salt?: Uint8Array; address?: string; } & ({ wasmHash: Uint8Array | string; format?: "hex" | "base64"; externalRef?: never; } | { externalRef: ExternalExecutableRef; wasmHash?: never; format?: never; })): Promise<AssembledTransaction<T>> {
+    const tx = await ContractClient.deploy<T & ContractClient>(args, options);
+    const parse = tx.options.parseResultXdr;
+    tx.options.parseResultXdr = (result) => new Client(parse(result).options) as T & Client;
+    return tx;
   }
   public readonly fromJson = {
     admin : this.txFromJson<Result<string, Error>>,  claim : this.txFromJson<Result<Claim, Error>>,  pause : this.txFromJson<Result<null, Error>>,  attest : this.txFromJson<Result<null, Error>>,  commit : this.txFromJson<Result<bigint, Error>>,  resume : this.txFromJson<Result<null, Error>>,  resolve : this.txFromJson<Result<null, Error>>,  registry : this.txFromJson<Result<string, Error>>,  add_stake : this.txFromJson<Result<null, Error>>,  challenge : this.txFromJson<Result<null, Error>>,  commitment : this.txFromJson<Result<Commitment, Error>>,  file_claim : this.txFromJson<Result<bigint, Error>>,  is_covered : this.txFromJson<Result<boolean, Error>>,  scoreboard : this.txFromJson<Result<string, Error>>,  claim_votes : this.txFromJson<Array<[string, boolean]>>,  max_penalty : this.txFromJson<Result<bigint, Error>>,  request_exit : this.txFromJson<Result<null, Error>>,  finalize_exit : this.txFromJson<Result<null, Error>>,  cancel_upgrade : this.txFromJson<Result<null, Error>>,  available_stake : this.txFromJson<Result<bigint, Error>>,  execute_upgrade : this.txFromJson<Result<null, Error>>,  propose_upgrade : this.txFromJson<Result<null, Error>>,  withdraw_excess : this.txFromJson<Result<null, Error>>,  claim_by_payment : this.txFromJson<bigint | null>,  commitments_by_provider : this.txFromJson<Array<bigint>>

@@ -41,8 +41,11 @@ export class Client extends ContractClient {
     );
   }
 
-   static deploy<T = Client>(args: { admin: string | Address; params: Params }, options: MethodOptions & Omit<ContractClientOptions, 'contractId'> & { salt?: Uint8Array; address?: string; } & ({ wasmHash: Uint8Array | string; format?: "hex" | "base64"; externalRef?: never; } | { externalRef: ExternalExecutableRef; wasmHash?: never; format?: never; })): Promise<AssembledTransaction<T>> {
-    return ContractClient.deploy(args, options);
+   static async deploy<T = Client>(args: { admin: string | Address; params: Params }, options: MethodOptions & Omit<ContractClientOptions, 'contractId'> & { salt?: Uint8Array; address?: string; } & ({ wasmHash: Uint8Array | string; format?: "hex" | "base64"; externalRef?: never; } | { externalRef: ExternalExecutableRef; wasmHash?: never; format?: never; })): Promise<AssembledTransaction<T>> {
+    const tx = await ContractClient.deploy<T & ContractClient>(args, options);
+    const parse = tx.options.parseResultXdr;
+    tx.options.parseResultXdr = (result) => new Client(parse(result).options) as T & Client;
+    return tx;
   }
   public readonly fromJson = {
     admin : this.txFromJson<Result<string, Error>>,  action : this.txFromJson<Result<PendingAction, Error>>,  cancel : this.txFromJson<Result<null, Error>>,  params : this.txFromJson<Result<Params, Error>>,  execute : this.txFromJson<Result<null, Error>>,  propose : this.txFromJson<Result<number, Error>>,  observers : this.txFromJson<Array<Observer>>,  accept_admin : this.txFromJson<Result<null, Error>>,  get_provider : this.txFromJson<Result<Provider, Error>>,  get_template : this.txFromJson<Result<SlaTemplate, Error>>,  template_ids : this.txFromJson<Array<number>>,  propose_admin : this.txFromJson<Result<null, Error>>,  verify_domain : this.txFromJson<Result<null, Error>>,  update_signers : this.txFromJson<Result<null, Error>>,  cancel_template : this.txFromJson<Result<null, Error>>,  provider_id_for : this.txFromJson<Uint8Array>,  unverify_domain : this.txFromJson<Result<null, Error>>,  update_metadata : this.txFromJson<Result<null, Error>>,  propose_template : this.txFromJson<Result<number, Error>>,  suspend_provider : this.txFromJson<Result<null, Error>>,  activate_template : this.txFromJson<Result<null, Error>>,  register_provider : this.txFromJson<Result<Uint8Array, Error>>,  deprecate_template : this.txFromJson<Result<null, Error>>,  is_active_observer : this.txFromJson<boolean>,  providers_by_admin : this.txFromJson<Array<Uint8Array>>,  reinstate_provider : this.txFromJson<Result<null, Error>>,  get_template_version : this.txFromJson<Result<SlaTemplate, Error>>,  active_observer_count : this.txFromJson<Result<number, Error>>

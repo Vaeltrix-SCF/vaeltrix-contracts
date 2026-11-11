@@ -47,6 +47,28 @@ try {
       ],
       { stdio: "inherit" },
     );
+    // SDK 17.2 generates a deploy method whose result is only a base Client.
+    // Preserve SDK transaction assembly and restore the generated client when decoding.
+    const clientPath = join(output, "src/client.ts");
+    const client = readFileSync(clientPath, "utf8");
+    const deploy = "    return ContractClient.deploy(args, options);";
+    if (!client.includes(deploy)) {
+      throw new Error(`Review the generated ${name} deploy method before regenerating bindings.`);
+    }
+    writeFileSync(
+      clientPath,
+      client
+        .replace("static deploy<T = Client>", "static async deploy<T = Client>")
+        .replace(
+          deploy,
+          [
+            "    const tx = await ContractClient.deploy<T & ContractClient>(args, options);",
+            "    const parse = tx.options.parseResultXdr;",
+            "    tx.options.parseResultXdr = (result) => new Client(parse(result).options) as T & Client;",
+            "    return tx;",
+          ].join("\n"),
+        ),
+    );
     // Deterministic workspace metadata is part of the generator, never edited by hand.
     const packagePath = join(output, "package.json");
     const pkg = JSON.parse(readFileSync(packagePath, "utf8")) as Record<string, unknown>;
