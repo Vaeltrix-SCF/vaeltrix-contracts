@@ -3,6 +3,8 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import type { Pool } from "pg";
 import { amountFields, BadRequest, page, pagination, paginationSchema } from "./conventions.js";
 
+import { providerMetrics } from "./metrics.js";
+
 type Row = Record<string, unknown>;
 type Contracts = { registry: string; bond: string; scoreboard: string };
 export interface NetworkReads {
@@ -145,10 +147,14 @@ export function registerWeekendRoutes(
        group by p.provider_id order by p.provider_id limit $2`,
         [after, limit + 1],
       );
+      const details = await providerMetrics(db, {
+        providers: rows.slice(0, limit).map((r) => String(r.provider_id)),
+      });
+      const byId = new Map(details.map((r) => [r.provider_id, r]));
       return pack(rows, limit, "provider_id", (r) => ({
         ...r,
         ...money("stake_total", r.stake_total),
-        score: null,
+        ...byId.get(String(r.provider_id)),
       }));
     },
   );
@@ -324,6 +330,39 @@ export function registerWeekendRoutes(
       } catch {
         return unavailable(reply);
       }
+    },
+  );
+
+  app.get<{
+    Params: { corridor: string };
+    Querystring: { limit?: unknown; cursor?: unknown; template?: number };
+  }>(
+    "/v1/corridors/:corridor/rankings",
+    {
+      schema: {
+        params: params("corridor", { type: "string", pattern: "^[A-Z]{2}-[A-Z]{2}$" }),
+        querystring: {
+          ...paginationSchema,
+          properties: {
+            ...paginationSchema.properties,
+            template: { type: "integer", minimum: 1, maximum: 2147483647 },
+          },
+        },
+        response: { 200: list },
+      },
+    },
+    async ({ params: { corridor }, query }) => {
+      const { limit, after } = paging(query);
+      const rows = await providerMetrics(db, {
+        corridor: [corridor.slice(0, 2), corridor.slice(3)],
+        ...(query.template === undefined ? {} : { template: query.template }),
+      });
+      rows.sort(
+        (a, b) => (b.score ?? -1) - (a.score ?? -1) || a.provider_id.localeCompare(b.provider_id),
+      );
+      const offset = after === null ? 0 : rows.findIndex((r) => r.provider_id === after) + 1;
+      if (after !== null && !offset) throw new BadRequest("Ranking cursor no longer exists");
+      return pack(rows.slice(offset, offset + limit + 1), limit, "provider_id", (row) => row);
     },
   );
 

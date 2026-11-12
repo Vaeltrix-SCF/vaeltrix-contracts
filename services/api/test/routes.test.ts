@@ -140,6 +140,50 @@ it.skipIf(!url)(
         latest_indexed_ledger: 90,
         lag_seconds: 50,
       });
+      const lowSample = "a".repeat(64);
+      await pool.query(
+        "insert into providers (provider_id,admin,home_domain,signers,status,registered_at) values ($1,'admin','sample.example','{}','active',now())",
+        [lowSample],
+      );
+      await pool.query(
+        `insert into commitments (commitment_id,provider_id,template_id,template_version,stake_asset,stake_total,stake_reserved,status,effective_from,updated_ledger)
+       values (2,$1,901,1,'asset',10000000000,0,'active',now(),90),
+              (3,$2,901,1,'asset',10000000000,0,'active',now(),90)`,
+        [nextProvider, lowSample],
+      );
+      for (const [id, commitment, count, onTime] of [
+        [provider, 1, 100, 80],
+        [nextProvider, 2, 100, 100],
+        [lowSample, 3, 1, 1],
+      ] as const) {
+        await pool.query(
+          `insert into payments (payment_id,sep31_tx_id,provider_id,commitment_id,amount,asset,status,verdict,sender_country,receiver_country)
+         select repeat(md5($1::text||n::text),2), n::text, $1,$2,100,'asset','resolved',
+                case when n<=$4 then 'on_time' else 'late' end,'US','NG'
+         from generate_series(1,$3::integer) n`,
+          [id, commitment, count, onTime],
+        );
+      }
+      await pool.query(
+        `insert into batches (commitment_id,period,observer,merkle_root,stats)
+       values (1,floor(extract(epoch from now())/86400)-1,'observer',$1,$2)`,
+        [hash, { payments: 100, on_time: 90, carved_out: 0 }],
+      );
+      expect(await get("/v1/providers?limit=100")).toMatchObject({
+        items: [
+          { provider_id: provider, score: 90, source: "batches" },
+          { provider_id: lowSample, score: null },
+          { provider_id: nextProvider, score: 100, source: "observer_live" },
+        ],
+      });
+      expect(await get("/v1/corridors/US-NG/rankings?template=901")).toMatchObject({
+        items: [
+          { provider_id: nextProvider, score: 100, source: "observer_live" },
+          { provider_id: provider, score: 80, score_version: "0.1" },
+          { provider_id: lowSample, score: null, score_status: "insufficient_data" },
+        ],
+        next_cursor: null,
+      });
       expect((await app.inject({ url: "/v1/claims/999" })).statusCode).toBe(404);
       expect((await app.inject({ url: "/v1/claims?limit=201" })).statusCode).toBe(400);
     } finally {
