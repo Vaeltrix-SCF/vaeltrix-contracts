@@ -1,7 +1,7 @@
 # @vaeltrix/api
 
 Fastify foundation for the read-only API (guide §13.3, VX-704).
-Business endpoints are VX-705; the foundation serves `/healthz` and `/v1/openapi.json`.
+The Testnet API serves providers, commitments, templates, claims, payments, evidence, and network status under `/v1`.
 OpenAPI 3.1 paths, query/path parameters and responses come from registered `/v1` route schemas.
 
 ## Run
@@ -20,6 +20,11 @@ The service binds to `127.0.0.1:4000`, verifies the effective SELECT-only role, 
 sets that role and read-only transaction default on **every** pooled connection.
 URL `options` overrides are rejected. Credentials and raw database errors are not logged.
 The role has no writes or sequence privileges; new migration-owned tables receive SELECT automatically.
+
+Set `DEPLOYMENTS_FILE` to an absolute path to select a different Testnet manifest.
+The evidence route forwards requests to `OBSERVER_API_URL` (default `http://127.0.0.1:4001`).
+Network lag is null before indexing starts or when the indexed ledger is outside RPC retention.
+Provider scores are null until the derived metrics in VX-706 are available.
 
 ## Route conventions
 
