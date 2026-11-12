@@ -2,7 +2,7 @@
   "name": "@vaeltrix/api",
   "version": "0.0.0",
   "private": true,
-  "description": "Read-only REST API over indexer and observer projections (guide \u00a713.3-13.5).",
+  "description": "Read-only REST API over indexer and observer projections (guide §13.3-13.5).",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
@@ -15,6 +15,9 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.3.1",
+    "@stellar/stellar-sdk": "^17.2.1",
+    "@vaeltrix/bindings-bond": "workspace:*",
+    "@vaeltrix/bindings-scoreboard": "workspace:*",
     "@vaeltrix/core": "workspace:*",
     "fastify": "^5.12.7",
     "kysely": "^0.29.7",
