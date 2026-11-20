@@ -24,7 +24,9 @@ The role has no writes or sequence privileges; new migration-owned tables receiv
 Set `DEPLOYMENTS_FILE` to an absolute path to select a different Testnet manifest.
 The evidence route forwards requests to `OBSERVER_API_URL` (default `http://127.0.0.1:4001`).
 Network lag is null before indexing starts or when the indexed ledger is outside RPC retention.
-Provider scores are null until the derived metrics in VX-706 are available.
+Provider scores use version 0.1 and require 100 tagged payments in the last 30 days.
+Corridor rankings use corridor-specific observer payments because daily batches do
+not split by corridor. Rankings put null scores last and accept a template filter.
 
 ## Route conventions
 
