@@ -84,3 +84,12 @@ pub struct ClaimAttested {
     pub uphold: bool,
     pub attestation_hash: BytesN<32>,
 }
+// Atomic settlement (VX-307).
+#[contractevent(topics=["claim_res"])]
+pub struct ClaimResolved {
+    #[topic]
+    pub claim_id: u64,
+    pub outcome: vaeltrix_types::ClaimOutcome,
+    pub amount_paid: i128,
+    pub bond_refunded: bool,
+}

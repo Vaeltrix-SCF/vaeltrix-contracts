@@ -65,7 +65,8 @@ Funds only ever sit in `vaeltrix_bond`, and stake can only leave to a sender on 
 | Deploy and seed scripts | Built | Deploy registry, scoreboard and bond, wire them together, and seed template 901 with a demo provider and commitment. |
 | Claim functions in `vaeltrix_bond` | Next | File, challenge, attest, resolve, expire and pay out. The data model and error codes are already frozen. |
 | Observer, indexer, API endpoints, SDK, mock anchor | Next | Scaffolded with their module layout. |
-| Smoke test, domain verification script, demo scripts | Next | Wired in `package.json`, not implemented yet. |
+| Domain verification script | Built | `pnpm verify:domain <provider-id>` checks the registered domain before updating Testnet verification. |
+| Smoke test and demo scripts | Next | Wired in `package.json`, not implemented yet. |
 
 ## Testnet deployment
 

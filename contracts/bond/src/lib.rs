@@ -5,6 +5,7 @@ mod coverage;
 mod disputes;
 mod events;
 mod exit;
+mod resolve;
 mod stake;
 mod storage;
 use soroban_sdk::{Address, BytesN, ContractExecutable, Env, contract, contractimpl};
@@ -48,6 +49,9 @@ impl Bond {
             period_secs,
         )
     }
+    pub fn resolve(env: Env, claim_id: u64) -> Result<(), Error> {
+        resolve::resolve(&env, claim_id)
+    }
     pub fn challenge(
         env: Env,
         claim_id: u64,
@@ -85,6 +89,16 @@ impl Bond {
     pub fn claim_by_payment(env: Env, payment_id: BytesN<32>) -> Option<u64> {
         touch(&env);
         claims::by_payment(&env, payment_id)
+    }
+    /// Permissionless keeper call for an existing commitment.
+    pub fn extend_commitment_ttl(env: Env, id: u64) -> Result<(), Error> {
+        touch(&env);
+        storage::commitment(&env, id).map(|_| ())
+    }
+    /// Permissionless keeper call. Resolved claims are not extended again.
+    pub fn extend_claim_ttl(env: Env, id: u64) -> Result<(), Error> {
+        touch(&env);
+        claims::claim(&env, id).map(|_| ())
     }
     pub fn commitment(env: Env, id: u64) -> Result<vaeltrix_types::Commitment, Error> {
         touch(&env);
@@ -199,10 +213,17 @@ impl Bond {
     }
 }
 #[cfg(test)]
+mod auth_test;
+#[cfg(test)]
 mod claim_test;
 #[cfg(test)]
 mod dispute_test;
 #[cfg(test)]
+mod resolve_test;
+#[cfg(test)]
 mod test;
 #[cfg(test)]
 mod testutils;
+
+#[cfg(test)]
+mod ttl_test;
