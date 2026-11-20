@@ -288,6 +288,22 @@ fn claim(env: Env, id: u64) -> Result<vaeltrix_types::Claim, Error>
 fn claim_by_payment(env: Env, payment_id: BytesN<32>) -> Option<u64>
 ```
 
+#### `extend_commitment_ttl`
+
+```rust
+fn extend_commitment_ttl(env: Env, id: u64) -> Result<(), Error>
+```
+
+Permissionless keeper call for an existing commitment.
+
+#### `extend_claim_ttl`
+
+```rust
+fn extend_claim_ttl(env: Env, id: u64) -> Result<(), Error>
+```
+
+Permissionless keeper call. Resolved claims are not extended again.
+
 #### `commitment`
 
 ```rust

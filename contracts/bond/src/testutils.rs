@@ -137,7 +137,9 @@ pub struct World<'a> {
 }
 impl<'a> World<'a> {
     pub fn new() -> Self {
-        let env = Env::default();
+        Self::with_env(Env::default())
+    }
+    pub fn with_env(env: Env) -> Self {
         env.mock_all_auths();
         let admin = Address::generate(&env);
         let observer = Address::generate(&env);
