@@ -113,3 +113,29 @@ jobs:
 
       - name: TypeScript vector suite
         run: pnpm exec vitest run packages/core/test/vectors.test.ts
+
+  go:
+    name: go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: services/vaeltrix-iso/go.mod
+          cache-dependency-path: services/vaeltrix-iso/go.sum
+
+      - name: gofmt
+        run: test -z "$(gofmt -l services/vaeltrix-iso)"
+
+      - name: go vet
+        working-directory: services/vaeltrix-iso
+        run: go vet ./...
+
+      - name: go build
+        working-directory: services/vaeltrix-iso
+        run: go build ./...
+
+      - name: go test
+        working-directory: services/vaeltrix-iso
+        run: go test ./...

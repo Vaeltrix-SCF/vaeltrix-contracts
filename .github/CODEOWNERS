@@ -1,0 +1,4 @@
+# Go layer owned by the Stellar Go maintainer per the Vaeltrix × Stellar Go
+# integration plan. Contracts team reviews anything touching the event
+# ingestion API (added in phase 2).
+/services/vaeltrix-iso/ @olvisgil
