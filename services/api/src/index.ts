@@ -2,6 +2,8 @@
 import { pathToFileURL } from "node:url";
 import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
+import { networkReads } from "./network.js";
+import { registerWeekendRoutes } from "./routes.js";
 import { buildApp } from "./app.js";
 import { readonlyPool, verifyReadonly } from "./database.js";
 export async function main(): Promise<void> {
@@ -15,6 +17,7 @@ export async function main(): Promise<void> {
   });
   try {
     await verifyReadonly(pool);
+    registerWeekendRoutes(app, pool, await networkReads());
     await app.listen({ port: 4000, host: "127.0.0.1" });
   } catch (error) {
     await app.close();
