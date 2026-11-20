@@ -53,3 +53,43 @@ pub struct ExitFinalized {
     pub at: u64,
     pub amount: i128,
 }
+// Claim lifecycle (VX-305).
+#[contractevent(topics=["claim_new"])]
+pub struct ClaimFiled {
+    #[topic]
+    pub claim_id: u64,
+    pub commitment_id: u64,
+    pub payment_id: BytesN<32>,
+    pub breach: vaeltrix_types::BreachKind,
+    pub penalty: i128,
+    pub reserved: i128,
+    pub shortfall: i128,
+    pub bond: i128,
+    pub claimant: soroban_sdk::Address,
+    pub beneficiary: soroban_sdk::Address,
+}
+// Challenge and voting (VX-306).
+#[contractevent(topics=["claim_chal"])]
+pub struct ClaimChallenged {
+    #[topic]
+    pub claim_id: u64,
+    pub counter_evidence_hash: BytesN<32>,
+    pub attestation_deadline: u64,
+}
+#[contractevent(topics=["claim_att"])]
+pub struct ClaimAttested {
+    #[topic]
+    pub claim_id: u64,
+    pub observer: soroban_sdk::Address,
+    pub uphold: bool,
+    pub attestation_hash: BytesN<32>,
+}
+// Atomic settlement (VX-307).
+#[contractevent(topics=["claim_res"])]
+pub struct ClaimResolved {
+    #[topic]
+    pub claim_id: u64,
+    pub outcome: vaeltrix_types::ClaimOutcome,
+    pub amount_paid: i128,
+    pub bond_refunded: bool,
+}

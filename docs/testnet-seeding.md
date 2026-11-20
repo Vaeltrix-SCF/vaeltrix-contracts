@@ -20,3 +20,20 @@ its on-chain status before rerunning; do not create another proposal blindly.
 Optional templates 1–3 are omitted. The observer is not implemented yet, so a
 signed delegation command is printed for later execution (VX-609 / #45).
 No delegation is silently claimed to exist.
+
+
+### Verify a provider domain
+
+Publish a `[VAELTRIX]` table in the registered provider's
+`https://<home-domain>/.well-known/stellar.toml` with the lowercase hex
+`PROVIDER_ID` and the deployment's `REGISTRY_CONTRACT`. Then run:
+
+```sh
+pnpm verify:domain <provider-id>
+```
+
+The command uses the Testnet deployment manifest and the deployer alias (the
+registry's initial verifier). If registry governance assigned the verifier
+role to the dedicated account, add `--source verifier`. Matching metadata
+verifies the provider; a confirmed mismatch revokes existing verification.
+If HTTPS or TOML parsing fails, the command leaves the current status unchanged.

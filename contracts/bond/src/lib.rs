@@ -1,8 +1,11 @@
 //! Stake custody and claim settlement (guide §6). Governance foundation: VX-301.
 #![no_std]
+mod claims;
 mod coverage;
+mod disputes;
 mod events;
 mod exit;
+mod resolve;
 mod stake;
 mod storage;
 use soroban_sdk::{Address, BytesN, ContractExecutable, Env, contract, contractimpl};
@@ -45,6 +48,57 @@ impl Bond {
             max_volume_per_period,
             period_secs,
         )
+    }
+    pub fn resolve(env: Env, claim_id: u64) -> Result<(), Error> {
+        resolve::resolve(&env, claim_id)
+    }
+    pub fn challenge(
+        env: Env,
+        claim_id: u64,
+        counter_evidence_hash: BytesN<32>,
+    ) -> Result<(), Error> {
+        disputes::challenge(&env, claim_id, counter_evidence_hash)
+    }
+    pub fn attest(
+        env: Env,
+        observer: Address,
+        claim_id: u64,
+        uphold: bool,
+        attestation_hash: BytesN<32>,
+    ) -> Result<(), Error> {
+        disputes::attest(&env, observer, claim_id, uphold, attestation_hash)
+    }
+    pub fn claim_votes(env: Env, id: u64) -> soroban_sdk::Vec<(Address, bool)> {
+        touch(&env);
+        disputes::votes(&env, id)
+    }
+    pub fn file_claim(
+        env: Env,
+        claimant: Address,
+        beneficiary: Address,
+        payment: vaeltrix_types::PaymentRef,
+        observer: Option<Address>,
+        receipt: Option<vaeltrix_types::CompletionReceipt>,
+    ) -> Result<u64, Error> {
+        claims::file(&env, claimant, beneficiary, payment, observer, receipt)
+    }
+    pub fn claim(env: Env, id: u64) -> Result<vaeltrix_types::Claim, Error> {
+        touch(&env);
+        claims::claim(&env, id)
+    }
+    pub fn claim_by_payment(env: Env, payment_id: BytesN<32>) -> Option<u64> {
+        touch(&env);
+        claims::by_payment(&env, payment_id)
+    }
+    /// Permissionless keeper call for an existing commitment.
+    pub fn extend_commitment_ttl(env: Env, id: u64) -> Result<(), Error> {
+        touch(&env);
+        storage::commitment(&env, id).map(|_| ())
+    }
+    /// Permissionless keeper call. Resolved claims are not extended again.
+    pub fn extend_claim_ttl(env: Env, id: u64) -> Result<(), Error> {
+        touch(&env);
+        claims::claim(&env, id).map(|_| ())
     }
     pub fn commitment(env: Env, id: u64) -> Result<vaeltrix_types::Commitment, Error> {
         touch(&env);
@@ -159,6 +213,17 @@ impl Bond {
     }
 }
 #[cfg(test)]
+mod auth_test;
+#[cfg(test)]
+mod claim_test;
+#[cfg(test)]
+mod dispute_test;
+#[cfg(test)]
+mod resolve_test;
+#[cfg(test)]
 mod test;
 #[cfg(test)]
 mod testutils;
+
+#[cfg(test)]
+mod ttl_test;
