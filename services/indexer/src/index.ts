@@ -1,47 +1,35 @@
 /** VX-701: run the Testnet contract event indexer (guide §13.1). */
-import { readFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
-import { Networks, rpc, StrKey } from "@stellar/stellar-sdk";
+import { Client as BondClient } from "@vaeltrix/bindings-bond";
+import { Client as RegistryClient } from "@vaeltrix/bindings-registry";
+import { Networks, rpc } from "@stellar/stellar-sdk";
 import Fastify from "fastify";
 import pg from "pg";
-import { z } from "zod";
+import { readConfig } from "./config.js";
 import { pollOnce, RetentionGap } from "./ingest.js";
-
-const testnetRpc = "https://soroban-testnet.stellar.org";
-const contractId = z.string().refine((value) => StrKey.isValidContract(value));
-const deployment = z.object({
-  network: z.literal("testnet"),
-  rpcUrl: z.literal(testnetRpc),
-  startLedger: z.int().min(1).max(0xffff_ffff),
-  contracts: z.object({ registry: contractId, bond: contractId, scoreboard: contractId }),
-});
-const environment = z.object({
-  DATABASE_URL: z.url().refine((url) => /^postgres(?:ql)?:\/\//.test(url)),
-  DEPLOYMENTS_FILE: z.string().min(1).optional(),
-  STELLAR_NETWORK: z.literal("testnet").optional(),
-  STELLAR_RPC_URL: z.literal(testnetRpc).optional(),
-  NETWORK_PASSPHRASE: z.literal(Networks.TESTNET).optional(),
-  INDEXER_PORT: z.coerce.number().int().min(1).max(65535).default(4002),
-});
+import { createProjector } from "./projections.js";
 
 export async function main(): Promise<void> {
-  const env = environment.safeParse(process.env);
-  if (!env.success) {
-    throw new Error(
-      `Invalid indexer configuration: ${env.error.issues.map((i) => i.path.join(".")).join(", ")}`,
-    );
-  }
-  // Package scripts start from services/indexer; an explicit path is relative to the caller.
-  const path =
-    env.data.DEPLOYMENTS_FILE ?? new URL("../../../deployments/testnet.json", import.meta.url);
-  const config = deployment.parse(JSON.parse(await readFile(path, "utf8")));
+  const { config, env } = await readConfig();
   const pool = new pg.Pool({
-    connectionString: env.data.DATABASE_URL,
+    connectionString: env.DATABASE_URL,
     connectionTimeoutMillis: 10_000,
   });
   const server = new rpc.Server(config.rpcUrl, { timeout: 10_000 });
   const app = Fastify({ logger: true });
+  const options = { rpcUrl: config.rpcUrl, networkPassphrase: Networks.TESTNET, server };
+  const registry = new RegistryClient({ ...options, contractId: config.contracts.registry });
+  const bond = new BondClient({ ...options, contractId: config.contracts.bond });
+  const project = createProjector(
+    {
+      provider: async (id) => (await registry.get_provider({ id })).result.unwrap(),
+      template: async (id, version) =>
+        (await registry.get_template_version({ id, version })).result.unwrap(),
+      claim: async (id) => (await bond.claim({ id })).result.unwrap(),
+    },
+    ({ contract, topic }) => app.log.warn({ contract, topic }, "Stored unknown contract event"),
+  );
   const stop = new AbortController();
   const shutdown = () => stop.abort();
   process.once("SIGINT", shutdown);
@@ -60,10 +48,10 @@ export async function main(): Promise<void> {
     if ((await server.getNetwork()).passphrase !== Networks.TESTNET) {
       throw new Error("Indexer RPC network mismatch");
     }
-    await app.listen({ host: "0.0.0.0", port: env.data.INDEXER_PORT });
+    await app.listen({ host: "0.0.0.0", port: env.INDEXER_PORT });
     while (!stop.signal.aborted) {
       try {
-        const count = await pollOnce(pool, server, config.contracts, config.startLedger);
+        const count = await pollOnce(pool, server, config.contracts, config.startLedger, project);
         status = "ok";
         if (count > 0) continue;
       } catch (error) {
