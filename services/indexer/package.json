@@ -15,7 +15,7 @@
     "reconcile": "tsx src/reconcile.ts"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^17.2.1",
+    "@stellar/stellar-sdk": "^17.4.0",
     "@vaeltrix/bindings-bond": "workspace:*",
     "@vaeltrix/bindings-registry": "workspace:*",
     "@vaeltrix/core": "workspace:*",

@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.3.1",
-    "@stellar/stellar-sdk": "^17.2.1",
+    "@stellar/stellar-sdk": "^17.4.0",
     "@vaeltrix/bindings-bond": "workspace:*",
     "@vaeltrix/bindings-scoreboard": "workspace:*",
     "@vaeltrix/core": "workspace:*",
