@@ -51,7 +51,7 @@ function u32(value: unknown): number {
   return n;
 }
 
-function timestamp(value: unknown): Date {
+export function timestamp(value: unknown): Date {
   const seconds = typeof value === "bigint" ? value : BigInt(integer(value));
   if (seconds < 0n || seconds > 8_640_000_000_000n) throw new Error("Invalid event timestamp");
   return new Date(Number(seconds * 1000n));
@@ -61,7 +61,7 @@ function variant(value: unknown): string {
   return text(Array.isArray(value) ? value[0] : value);
 }
 
-function templateBody(t: SlaTemplate, status: string): string {
+export function templateBody(t: SlaTemplate, status: string): string {
   const [penalty] = t.penalty.values;
   return JSON.stringify(
     {

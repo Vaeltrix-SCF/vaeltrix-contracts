@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import { scValToNative, type rpc } from "@stellar/stellar-sdk";
 import type { Project, ProjectionEvent } from "./projections.js";
 
+export const snapshotName = "indexer:partial_snapshot";
 export const cursorName = "indexer:events";
 const pageLimit = 200;
 export const contractNames = ["registry", "bond", "scoreboard"] as const;
@@ -27,9 +28,10 @@ type StoredEvent = {
 };
 
 export class RetentionGap extends Error {
-  constructor(cursor: number, oldest: number) {
+  constructor(cursor: number, oldest: number, message?: string) {
     super(
-      `Indexer checkpoint ${cursor} is outside RPC history (oldest ${oldest}); reconcile required (VX-703)`,
+      message ??
+        `Indexer checkpoint ${cursor} is outside RPC history (oldest ${oldest}); reconcile required (VX-703)`,
     );
   }
 }
@@ -40,6 +42,16 @@ function ledger(value: string | number): number {
     throw new Error("Invalid indexer ledger sequence");
   }
   return n;
+}
+
+async function assertReplayAllowed(db: Pool | PoolClient): Promise<void> {
+  const result = await db.query("select 1 from cursors where name = $1", [snapshotName]);
+  if (result.rowCount)
+    throw new RetentionGap(
+      0,
+      0,
+      "Partial snapshot installed; replay requires an archive-backed rebuild in a fresh database",
+    );
 }
 
 async function readCursor(
@@ -129,6 +141,8 @@ async function replayPending(pool: Pool, startLedger: number, project: Project):
   return transaction(pool, async (db) => {
     // The cursor row also serializes page writes. Existing events and their cursor
     // always committed together, including events stored before VX-702.
+    await db.query("lock table cursors in row exclusive mode");
+    await assertReplayAllowed(db);
     await readCursor(db, startLedger, true);
     return projectPending(db, project);
   });
@@ -143,6 +157,8 @@ async function storePage(
   project?: Project,
 ): Promise<void> {
   await transaction(pool, async (db) => {
+    await db.query("lock table cursors in row exclusive mode");
+    await assertReplayAllowed(db);
     await db.query(
       "insert into cursors (name, ledger) values ($1, $2) on conflict (name) do nothing",
       [cursorName, startLedger],
@@ -172,6 +188,7 @@ export async function pollOnce(
   startLedger: number,
   project?: Project,
 ): Promise<number> {
+  await assertReplayAllowed(pool);
   if (project) {
     const replayed = await replayPending(pool, startLedger, project);
     if (replayed > 0) return replayed;

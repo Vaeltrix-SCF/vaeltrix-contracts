@@ -14,9 +14,23 @@ After restart, the indexer resumes from `indexer:events`. It rejects expired
 checkpoints and reports `reconcile_required` without dropping events or resetting
 the cursor. Projection handlers update the database before the checkpoint advances.
 Previously saved events are replayed in order before polling new pages. Unknown
-topics are kept in the event log. Storage reconciliation is tracked by VX-703 (#53).
+topics are kept in the event log. See the reconciliation command below.
 
 The Postgres integration suite replays XDR events from the
 [Stellar getEvents reference](https://developers.stellar.org/docs/data/apis/rpc/api-reference/methods/getEvents).
 Set `DATABASE_TEST_URL` to a disposable database whose name ends in `_test`
 and run `pnpm exec vitest run services/indexer/test/ingest.test.ts`.
+
+
+## Recover the demo and known IDs
+
+With the correct Testnet manifest and database selected, run
+`pnpm indexer:reconcile --apply`. The command refreshes providers known from
+the seed, projections, or retained registration events; their commitments and
+known template versions; and already indexed open claims. It does not invent
+missing transaction hashes or reconstruct unknown providers and claims.
+
+The refresh commits as one database transaction and leaves the event cursor
+unchanged. It marks the database as a partial snapshot and stops replay there:
+continuing over these balances could apply old stake changes twice. To resume
+complete indexing, rebuild a fresh database from an archive covering the gap.
