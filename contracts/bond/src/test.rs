@@ -548,3 +548,81 @@ fn exit_from_paused_requires_provider_admin() {
 #[test]
 #[ignore = "VX-307 (#22) implements claim filing and resolution for exiting commitments"]
 fn claim_against_exiting_commitment_still_pays() {}
+
+#[test]
+fn three_contract_world_commits_and_preserves_invariants() {
+    let w = crate::testutils::World::new();
+    let id = w.with_commitment(10_000_000_000);
+    assert_eq!(w.bond.commitment(&id).stake_total, 10_000_000_000);
+    assert_eq!(w.scoreboard.bond(), Some(w.bond.address.clone()));
+    w.assert_invariants();
+}
+
+#[test]
+#[should_panic]
+fn world_detects_reserved_above_total_i1() {
+    let w = crate::testutils::World::new();
+    let id = w.with_commitment(10_000_000_000);
+    w.env.as_contract(&w.bond.address, || {
+        let mut c = crate::storage::commitment(&w.env, id).unwrap();
+        c.stake_reserved = c.stake_total + 1;
+        crate::storage::put_commitment(&w.env, &c);
+    });
+    w.assert_invariants();
+}
+#[test]
+#[should_panic]
+fn world_detects_unbacked_reservations_i2() {
+    let w = crate::testutils::World::new();
+    let id = w.with_commitment(10_000_000_000);
+    w.env.as_contract(&w.bond.address, || {
+        let mut c = crate::storage::commitment(&w.env, id).unwrap();
+        c.stake_reserved = 1;
+        crate::storage::put_commitment(&w.env, &c);
+    });
+    w.assert_invariants();
+}
+#[test]
+#[should_panic]
+fn world_detects_missing_tokens_i7() {
+    let w = crate::testutils::World::new();
+    w.with_commitment(10_000_000_000);
+    w.usdc_token.burn(&w.bond.address, &1);
+    w.assert_invariants();
+}
+#[test]
+#[should_panic]
+fn world_detects_wrong_open_claim_count_i8() {
+    let w = crate::testutils::World::new();
+    let id = w.with_commitment(10_000_000_000);
+    w.env.as_contract(&w.bond.address, || {
+        let mut c = crate::storage::commitment(&w.env, id).unwrap();
+        c.open_claims = 1;
+        crate::storage::put_commitment(&w.env, &c);
+    });
+    w.assert_invariants();
+}
+#[test]
+fn world_receipt_is_signed_over_exact_layout() {
+    use ed25519_dalek::{Signature, Verifier};
+    let w = crate::testutils::World::new();
+    let id = w.with_commitment(10_000_000_000);
+    let p = w.payment(id, 1_000_000_000, 120_000, Some(251_000));
+    let receipt = w.receipt(&p);
+    let mut expected = std::vec::Vec::from(&b"VAELTRIX:RECEIPT:v1"[..]);
+    expected.extend_from_slice(&w.env.ledger().network_id().to_array());
+    expected.extend_from_slice(&p.payment_id.to_array());
+    expected.extend_from_slice(&id.to_be_bytes());
+    expected.extend_from_slice(&p.amount.to_be_bytes());
+    expected.extend_from_slice(&p.t0_ms.to_be_bytes());
+    expected.extend_from_slice(&251_000_u64.to_be_bytes());
+    expected.extend_from_slice(&0_u64.to_be_bytes());
+    w.provider_signer
+        .verifying_key()
+        .verify(
+            &expected,
+            &Signature::from_bytes(&receipt.signature.to_array()),
+        )
+        .unwrap();
+    w.assert_invariants();
+}
